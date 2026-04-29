@@ -3,6 +3,7 @@ import Login from './auth/Login';
 import Sidebar from './ui/Sidebar';
 import BomTree from './bom/BomTree';
 import SettingsModal from './settings/SettingsModal';
+import ReleaseNotesModal from './release/ReleaseNotesModal';
 import { ToastProvider, useToast } from './ui/Toast';
 import { getAuth, getUser, signOut as apiSignOut } from './api/orcanosClient';
 
@@ -18,6 +19,7 @@ function AppShell() {
   const [auth, setAuth] = useState(() => !!getAuth());
   const [username, setUsername] = useState(() => getUser() || '');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   // Bumped after a successful login or sign-out so children can reset.
   const [authEpoch, setAuthEpoch] = useState(0);
   const { showToast } = useToast();
@@ -57,6 +59,7 @@ function AppShell() {
       <Sidebar
         username={username}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenReleaseNotes={() => setReleaseNotesOpen(true)}
         onSignOut={handleSignOut}
       />
       <main className="app-main">
@@ -64,6 +67,9 @@ function AppShell() {
       </main>
       {settingsOpen && (
         <SettingsModal onClose={() => setSettingsOpen(false)} />
+      )}
+      {releaseNotesOpen && (
+        <ReleaseNotesModal onClose={() => setReleaseNotesOpen(false)} />
       )}
     </div>
   );

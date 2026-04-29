@@ -4,6 +4,9 @@ This is the project-specific guidance file (analogous to the `CLAUDE.md` from th
 Orcanos QMS reference project). Read this once at the start of any working
 session before making changes.
 
+### Current versions (update after every bump)
+- **App:** `0.2.0`
+
 ---
 
 ## What this app is

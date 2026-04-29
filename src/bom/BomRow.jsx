@@ -23,16 +23,24 @@ export default function BomRow({
   // After first expand, we know whether this is an Assembly or a leaf Part.
   const knownLeaf = node.loaded && node.childCount === 0 && !isRoot;
   const knownAssembly = node.loaded && node.childCount > 0 && !isRoot;
+  // Probed-from-parent-expand: we already know whether this row has children
+  // even though it hasn't been expanded yet. `hasChildren === undefined` means
+  // "unknown" — fall through to the existing logic (show chevron).
+  const probedLeaf = !isRoot && node.row.hasChildren === false;
+  const probedAssembly = !isRoot && node.row.hasChildren === true;
+
+  const isLeaf = knownLeaf || probedLeaf;
+  const isAssembly = knownAssembly || probedAssembly;
 
   // Icon selection
   let iconNode;
   if (isRoot) iconNode = <BomIcon />;
-  else if (knownAssembly) iconNode = <AssemblyIcon />;
-  else if (knownLeaf) iconNode = <PartIcon />;
+  else if (isAssembly) iconNode = <AssemblyIcon />;
+  else if (isLeaf) iconNode = <PartIcon />;
   else iconNode = <UnknownChildIcon />;
 
   // Chevron presence: hide it for leaves (rows we know have no children).
-  const showChevron = !knownLeaf;
+  const showChevron = !isLeaf;
 
   // ─── Synthetic columns ──────────────────────────────────────
   // The normalizer extracts the canonical numeric ID from row.id (which the
@@ -49,16 +57,36 @@ export default function BomRow({
   function valueFor(colKey) {
     if (colKey === '__quantity') {
       if (isRoot) return '1';
-      return node.row.byName('Quantity') || '';
+      return (
+        node.row.byName('Quantity') ||
+        node.row.byTitle('Quantity') ||
+        ''
+      );
     }
     if (colKey === '__masterPartSource') {
       if (isRoot) return '';
-      return node.row.byName('Master Part Source') || '';
+      return (
+        node.row.byName('Master Part Source') ||
+        node.row.byName('Master_Part_Source') ||
+        node.row.byTitle('Master Part Source') ||
+        ''
+      );
+    }
+    if (colKey === '__revision') {
+      // PRTs expose "Revision"; PIs expose "Part Revision". Show whichever
+      // is present so both row types render under the same header.
+      return (
+        node.row.byTitle('Part Revision') ||
+        node.row.byName('Part Revision') ||
+        node.row.byTitle('Revision') ||
+        node.row.byName('Revision') ||
+        ''
+      );
     }
     if (colKey === '__orcanosLink') {
       return null; // rendered as a <a> below
     }
-    return node.row.byName(colKey) || '';
+    return node.row.byName(colKey) || node.row.byTitle(colKey) || '';
   }
 
   return (
@@ -127,8 +155,9 @@ export default function BomRow({
         }
 
         const value = valueFor(c.key);
+        const tooltip = String(value).replace(/<[^>]+>/g, '').trim();
         return (
-          <td key={c.key} className="bom-col-text">
+          <td key={c.key} className="bom-col-text" title={tooltip}>
             {/* Field text may contain HTML — sanitize then render. */}
             <span
               dangerouslySetInnerHTML={{

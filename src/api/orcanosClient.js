@@ -159,44 +159,77 @@ export async function fetchBoms({
     Item_Type: 'PRT',
     Version_id: versionId ?? defaultVersion,
     IsNewPaging: 1,
-    IsReturnPageCount: 1,
+    IsReturnPageCount: 0,
   };
   return await _fetchFilter(body);
 }
 
 /**
- * Fetch the children of a BOM/Assembly given the parent's `Obj_name`.
+ * Fetch the children of a BOM/Assembly given the parent's original ID.
  *
  *   { rows, total }   on success
  *
  * Throws `OrcanosError` on failure.
  */
 export async function fetchChildren({
-  parentObjName,
+  parentOriginalId,
   filterId,
   versionId,
   page = 1,
   pageSize = 200,
 } = {}) {
-  if (!parentObjName) {
-    throw new OrcanosError(0, 'parentObjName is required');
+  if (parentOriginalId === undefined || parentOriginalId === null || parentOriginalId === '') {
+    throw new OrcanosError(0, 'parentOriginalId is required');
   }
   const { instanceFilterId, versionId: defaultVersion } = getSettings();
 
-  // Filter_By is a free-form string. Single-quote the value, and escape any
-  // internal single-quotes by doubling them (SQL string-literal style).
-  const escaped = String(parentObjName).replace(/'/g, "''");
   const body = {
     Filter_id: filterId ?? instanceFilterId,
     Page_no: page,
     Page_Size: pageSize,
     Item_Type: 'PI',
     Version_id: versionId ?? defaultVersion,
-    Filter_By: `[Master Part Source] = '${escaped}'`,
-    IsNewPaging: 1,
-    IsReturnPageCount: 1,
+    Filter_By: `parent_original_id = ${parentOriginalId}`,
+    IsNewPaging: 0,
+    IsReturnPageCount: 0,
   };
   return await _fetchFilter(body);
+}
+
+/**
+ * Cheap "does this row have any children?" probe. Page_Size: 1 — we only
+ * need to know whether the result set is non-empty.
+ *
+ * Returns:
+ *   true   — at least one child exists
+ *   false  — no children
+ *   undefined — call failed; caller should treat as unknown
+ */
+export async function probeHasChildren(parentOriginalId) {
+  if (
+    parentOriginalId === undefined ||
+    parentOriginalId === null ||
+    parentOriginalId === ''
+  ) {
+    return false;
+  }
+  const { instanceFilterId, versionId } = getSettings();
+  const body = {
+    Filter_id: instanceFilterId,
+    Page_no: 1,
+    Page_Size: 1,
+    Item_Type: 'PI',
+    Version_id: versionId,
+    Filter_By: `parent_original_id = ${parentOriginalId}`,
+    IsNewPaging: 0,
+    IsReturnPageCount: 0,
+  };
+  try {
+    const result = await _fetchFilter(body, { silent: true });
+    return result.rows.length > 0;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -213,7 +246,7 @@ export function orcanosItemUrl({ baseUrl, versionId, type, itemId }) {
 
 // ─── Internal ─────────────────────────────────────────────────────────────
 
-async function _fetchFilter(body) {
+async function _fetchFilter(body, { silent = false } = {}) {
   const auth = getAuth();
   if (!auth) {
     // Treat as 401 so callers can react uniformly.
@@ -222,6 +255,7 @@ async function _fetchFilter(body) {
 
   let resp;
   try {
+    if (!silent) console.log('[orcanos] → request body:', body);
     resp = await fetch(apiBase() + 'QW_Get_Filter_Results', {
       method: 'POST',
       headers: {
@@ -250,6 +284,7 @@ async function _fetchFilter(body) {
   let data;
   try {
     data = await resp.json();
+    if (!silent) console.log('[orcanos] ← response:', data);
   } catch {
     throw new OrcanosError(0, 'Server returned invalid JSON.');
   }
@@ -295,8 +330,14 @@ function _normalizeRow(obj) {
     const bo = parseInt(b.Web_order ?? b.Order ?? 0, 10);
     return ao - bo;
   });
-  const byName = (n) =>
-    sorted.find((f) => f.Name === n)?.Text ?? '';
+  // For picklist / lookup fields (Status, Severity, etc.), Orcanos puts the
+  // human-readable label in `Display_text` and the internal id in `Text`.
+  // For plain text fields only `Text` is populated. Prefer the display value
+  // so picklists render their label rather than a numeric id.
+  const fieldText = (f) =>
+    (f && (f.Display_text || f.Display || f.Text || f.Value || '')) || '';
+  const byName = (n) => fieldText(sorted.find((f) => f.Name === n));
+  const byTitle = (t) => fieldText(sorted.find((f) => f.Title === t));
 
   // Orcanos's top-level Id field arrives as a string like "46584 (42195)"
   // where the parenthetical is the canonical numeric ID used for URLs.
@@ -309,13 +350,32 @@ function _normalizeRow(obj) {
     extractNumericId(userPrefix) ||
     String(id).replace(/[^\d]/g, '');
 
+  // `originalId` is the value to send as `parent_original_id` when expanding
+  // this row's children:
+  //   - For PRTs (top-level BOMs): same as itemId.
+  //   - For PIs:  the PRT-side number embedded in `Master Part Source`,
+  //               e.g. "PRT-39382-901631 description..." → "39382".
+  const type = obj.Type ?? '';
+  let originalId = '';
+  if (type === 'PI') {
+    const mps =
+      byName('Master Part Source') ||
+      byName('Master_Part_Source') ||
+      byTitle('Master Part Source');
+    const m = String(mps || '').match(/^[A-Z]+-(\d+)-/);
+    if (m) originalId = m[1];
+  }
+  if (!originalId) originalId = itemId;
+
   return {
     id,           // raw Id string from Orcanos (may include parenthetical)
     itemId,       // canonical numeric ID for URL building
-    type: obj.Type ?? '',
+    originalId,   // value to use as parent_original_id when expanding children
+    type,
     fields: sorted,
     byName,
-    objName: byName('Obj_name'),
+    byTitle,
+    objName: byName('Obj_name') || byTitle('Obj_name'),
     userPrefix,
     raw: obj,
   };

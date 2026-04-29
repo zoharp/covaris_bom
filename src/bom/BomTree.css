@@ -261,11 +261,6 @@
   white-space: nowrap;
 }
 
-.bom-col-text:hover {
-  white-space: normal;
-  overflow: visible;
-}
-
 .bom-col-link a {
   color: var(--accent-orange);
   text-decoration: none;

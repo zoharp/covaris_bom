@@ -1,0 +1,19 @@
+[
+  {
+    "version": "0.2.0",
+    "date": "2026-04-29",
+    "changes": [
+      "API: send IsReturnPageCount=0 — filters 609/610 returned empty Data with 1.",
+      "API: children filter now uses `parent_original_id = <id>` (replaced `[Master Part Source] = '<name>'`); IsNewPaging=0.",
+      "API: extract `original_id` from a PI's Master Part Source value (e.g. `PRT-39382-901631 ...` → `39382`).",
+      "API: row lookup falls back from byName to byTitle and reads value from Display_text/Display/Text/Value (Display_text preferred so picklists like Status render their label, not the internal id).",
+      "UX: probe each child for grandchildren on expand — leaves render with no chevron, assemblies keep one. Concurrency cap 6, Page_Size 1.",
+      "UX: hide Copy As Link, In Pool, Is Branch, Original ID, ID, Quantity, Master Part Source columns (data still on row, just not rendered).",
+      "UX: merge Revision (PRT) and Part Revision (PI) into a single Revision column.",
+      "UX: removed cell hover-expand that caused row reflow; native title tooltip replaces it.",
+      "Design: new SVG icons — BOM (hierarchy tree, purple), Assembly (gear, orange), Part (hex nut, gray).",
+      "Design: added missing --accent-orange (#F5A623) token to design-system.css.",
+      "Config: settings.xml filter IDs updated to 609 (BOMs) / 610 (instances)."
+    ]
+  }
+]

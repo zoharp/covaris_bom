@@ -1,5 +1,5 @@
 import { useCallback, useReducer, useRef } from 'react';
-import { fetchBoms, fetchChildren } from '../api/orcanosClient';
+import { fetchBoms, fetchChildren, probeHasChildren } from '../api/orcanosClient';
 import { useToast } from '../ui/Toast';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -34,6 +34,24 @@ import { useToast } from '../ui/Toast';
 
 const EXPAND_ALL_DEPTH_CAP = 20;
 const EXPAND_ALL_CONCURRENCY = 6;
+const PROBE_CONCURRENCY = 6;
+
+// Run async fn over `items` with at most `limit` in flight at a time.
+// Returns results in the same order as `items`.
+async function mapWithLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let nextIdx = 0;
+  async function worker() {
+    while (true) {
+      const i = nextIdx++;
+      if (i >= items.length) return;
+      out[i] = await fn(items[i], i);
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
+  await Promise.all(workers);
+  return out;
+}
 
 let _seq = 0;
 function nextNodeKey() {
@@ -255,10 +273,20 @@ export function useBomChildren({ onAuthExpired }) {
 
       dispatch({ type: 'CHILD_LOAD_START', parentKey: nodeKey });
       try {
-        const { rows } = await fetchChildren({ parentObjName: row.objName });
-        childCache.current.set(nodeKey, { rows, subtree: null });
-        dispatch({ type: 'CHILD_LOAD_OK', parentKey: nodeKey, rows });
-        return rows;
+        const { rows } = await fetchChildren({ parentOriginalId: row.originalId });
+
+        // Probe each child for grandchildren so we can render leaves vs.
+        // expandable rows without making the user click first. The probe is
+        // a Page_Size: 1 fetch — cheap. Errors fall through as `undefined`,
+        // which leaves the chevron present (we just don't know yet).
+        const enrichedRows = await mapWithLimit(rows, PROBE_CONCURRENCY, async (r) => {
+          const has = await probeHasChildren(r.originalId);
+          return { ...r, hasChildren: has };
+        });
+
+        childCache.current.set(nodeKey, { rows: enrichedRows, subtree: null });
+        dispatch({ type: 'CHILD_LOAD_OK', parentKey: nodeKey, rows: enrichedRows });
+        return enrichedRows;
       } catch (err) {
         if (err.httpCode === 401) {
           onAuthExpired?.(err.message);
@@ -364,7 +392,7 @@ export function useBomChildren({ onAuthExpired }) {
                 rows = cached.rows;
               } else {
                 const res = await fetchChildren({
-                  parentObjName: item.row.objName,
+                  parentOriginalId: item.row.originalId,
                 });
                 rows = res.rows;
                 childCache.current.set(item.nodeKey, {

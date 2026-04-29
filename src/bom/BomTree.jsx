@@ -14,6 +14,34 @@ function useDebounced(value, delay = 200) {
   return v;
 }
 
+// Columns we never display. The data is still kept on each row — we just
+// don't add them to the rendered column list. Match by either Name or Title,
+// case-insensitive, with spaces and underscores treated equivalently.
+const HIDDEN_COLUMN_KEYS = new Set([
+  'copy as link',
+  'in pool',
+  'is branch',
+  'original id',
+  'id',
+  'master part source',
+  // Hide the dynamic Quantity column from the PRT row — we render Quantity
+  // via the synthetic `__quantity` column so it shows for both PRTs ("1")
+  // and PIs (their Quantity field).
+  'quantity',
+  // The PRT filter exposes "Revision" and the PI filter exposes "Part Revision".
+  // We hide both and add a single synthetic `__revision` column that pulls from
+  // whichever the row has.
+  'revision',
+  'part revision',
+]);
+
+function normalizeColKey(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[\s_]+/g, ' ')
+    .trim();
+}
+
 export default function BomTree({ onAuthExpired }) {
   const tree = useBomChildren({ onAuthExpired });
   const [search, setSearch] = useState('');
@@ -33,14 +61,20 @@ export default function BomTree({ onAuthExpired }) {
   const columns = useMemo(() => {
     const firstRoot = tree.nodes.find((n) => n.depth === 0);
     if (!firstRoot) return null;
-    const dynamic = firstRoot.row.fields.map((f) => ({
-      key: f.Name,
-      title: f.Title || f.Name,
-    }));
+    const dynamic = firstRoot.row.fields
+      .filter((f) => {
+        const n = normalizeColKey(f.Name);
+        const t = normalizeColKey(f.Title);
+        return !HIDDEN_COLUMN_KEYS.has(n) && !HIDDEN_COLUMN_KEYS.has(t);
+      })
+      .map((f) => ({
+        key: f.Name,
+        title: f.Title || f.Name,
+      }));
     return [
       ...dynamic,
       { key: '__quantity', title: 'Quantity' },
-      { key: '__masterPartSource', title: 'Master Part Source' },
+      { key: '__revision', title: 'Revision' },
       { key: '__orcanosLink', title: 'Orcanos Link' },
     ];
   }, [tree.nodes]);

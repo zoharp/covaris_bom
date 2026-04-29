@@ -1,7 +1,12 @@
 import React from 'react';
 import './Sidebar.css';
 
-export default function Sidebar({ username, onOpenSettings, onSignOut }) {
+export default function Sidebar({
+  username,
+  onOpenSettings,
+  onOpenReleaseNotes,
+  onSignOut,
+}) {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -15,6 +20,14 @@ export default function Sidebar({ username, onOpenSettings, onSignOut }) {
         <button className="sidebar-item sidebar-item--active" type="button">
           <span className="sidebar-item-icon">📋</span>
           <span>BOMs</span>
+        </button>
+        <button
+          className="sidebar-item"
+          type="button"
+          onClick={onOpenReleaseNotes}
+        >
+          <span className="sidebar-item-icon">📝</span>
+          <span>Release Notes</span>
         </button>
         <button
           className="sidebar-item"
