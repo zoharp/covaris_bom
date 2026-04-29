@@ -6,6 +6,7 @@ import SettingsModal from './settings/SettingsModal';
 import ReleaseNotesModal from './release/ReleaseNotesModal';
 import { ToastProvider, useToast } from './ui/Toast';
 import { getAuth, getUser, signOut as apiSignOut } from './api/orcanosClient';
+import { getSettings } from './settings/settingsStore';
 
 export default function App() {
   return (
@@ -20,6 +21,9 @@ function AppShell() {
   const [username, setUsername] = useState(() => getUser() || '');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
+  // Active main-view: 'boms' (BOM Filter) or 'parts' (Part Catalog filter).
+  // Both views share BomTree — only the top filter ID and label differ.
+  const [view, setView] = useState('boms');
   // Bumped after a successful login or sign-out so children can reset.
   const [authEpoch, setAuthEpoch] = useState(0);
   const { showToast } = useToast();
@@ -58,12 +62,27 @@ function AppShell() {
     <div className="app-shell">
       <Sidebar
         username={username}
+        view={view}
+        onSelectView={setView}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenReleaseNotes={() => setReleaseNotesOpen(true)}
         onSignOut={handleSignOut}
       />
       <main className="app-main">
-        <BomTree key={authEpoch} onAuthExpired={handleAuthExpired} />
+        {(() => {
+          const s = getSettings();
+          const isBoms = view === 'boms';
+          // Remount BomTree on view change so it reloads with the new
+          // filter and resets pagination/cache.
+          return (
+            <BomTree
+              key={`${view}/${authEpoch}`}
+              onAuthExpired={handleAuthExpired}
+              topFilterId={isBoms ? s.bomFilterId : s.partCatalogFilterId}
+              topLabel={isBoms ? 'BOMs' : 'Parts'}
+            />
+          );
+        })()}
       </main>
       {settingsOpen && (
         <SettingsModal onClose={() => setSettingsOpen(false)} />

@@ -51,6 +51,7 @@ export default function SettingsModal({ onClose }) {
           <Field label="Version ID" value={String(s.versionId)} />
           <Field label="BOM Filter ID" value={String(s.bomFilterId)} />
           <Field label="Instance Filter ID" value={String(s.instanceFilterId)} />
+          <Field label="Part Catalog Filter ID" value={String(s.partCatalogFilterId)} />
 
           <div className="settings-divider" />
 

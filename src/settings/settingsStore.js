@@ -5,8 +5,9 @@
 const FALLBACK = {
   baseUrl: 'https://us.orcanos.com/covaris/',
   versionId: 5,
-  bomFilterId: 519,
-  instanceFilterId: 520,
+  bomFilterId: 609,
+  instanceFilterId: 610,
+  partCatalogFilterId: 611,
 };
 
 let _settings = null;
@@ -36,6 +37,7 @@ function parseXml(xmlText) {
     versionId: getInt('versionId', FALLBACK.versionId),
     bomFilterId: getInt('bomFilterId', FALLBACK.bomFilterId),
     instanceFilterId: getInt('instanceFilterId', FALLBACK.instanceFilterId),
+    partCatalogFilterId: getInt('partCatalogFilterId', FALLBACK.partCatalogFilterId),
   };
 }
 

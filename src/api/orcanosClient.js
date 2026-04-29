@@ -149,7 +149,7 @@ export async function fetchBoms({
   filterId,
   versionId,
   page = 1,
-  pageSize = 200,
+  pageSize = 100,
 } = {}) {
   const { bomFilterId, versionId: defaultVersion } = getSettings();
   const body = {
@@ -158,8 +158,14 @@ export async function fetchBoms({
     Page_Size: pageSize,
     Item_Type: 'PRT',
     Version_id: versionId ?? defaultVersion,
-    IsNewPaging: 1,
-    IsReturnPageCount: 0,
+    // ⚠️ This combination is load-bearing. Don't "fix" it.
+    //   IsNewPaging: 0  +  IsReturnPageCount: "yes"
+    // is the only combo that returns BOTH the rows AND a truthful
+    // `Total_records` for filter 609 (verified via console matrix test).
+    // With IsNewPaging: 1, Total_records just echoes Page_Size.
+    // With IsReturnPageCount: 1 (numeric), Data comes back empty.
+    IsNewPaging: 0,
+    IsReturnPageCount: 'yes',
   };
   return await _fetchFilter(body);
 }
@@ -176,7 +182,7 @@ export async function fetchChildren({
   filterId,
   versionId,
   page = 1,
-  pageSize = 200,
+  pageSize = 100,
 } = {}) {
   if (parentOriginalId === undefined || parentOriginalId === null || parentOriginalId === '') {
     throw new OrcanosError(0, 'parentOriginalId is required');
@@ -194,42 +200,6 @@ export async function fetchChildren({
     IsReturnPageCount: 0,
   };
   return await _fetchFilter(body);
-}
-
-/**
- * Cheap "does this row have any children?" probe. Page_Size: 1 — we only
- * need to know whether the result set is non-empty.
- *
- * Returns:
- *   true   — at least one child exists
- *   false  — no children
- *   undefined — call failed; caller should treat as unknown
- */
-export async function probeHasChildren(parentOriginalId) {
-  if (
-    parentOriginalId === undefined ||
-    parentOriginalId === null ||
-    parentOriginalId === ''
-  ) {
-    return false;
-  }
-  const { instanceFilterId, versionId } = getSettings();
-  const body = {
-    Filter_id: instanceFilterId,
-    Page_no: 1,
-    Page_Size: 1,
-    Item_Type: 'PI',
-    Version_id: versionId,
-    Filter_By: `parent_original_id = ${parentOriginalId}`,
-    IsNewPaging: 0,
-    IsReturnPageCount: 0,
-  };
-  try {
-    const result = await _fetchFilter(body, { silent: true });
-    return result.rows.length > 0;
-  } catch {
-    return undefined;
-  }
 }
 
 /**

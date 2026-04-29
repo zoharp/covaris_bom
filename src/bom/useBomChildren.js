@@ -1,5 +1,5 @@
 import { useCallback, useReducer, useRef } from 'react';
-import { fetchBoms, fetchChildren, probeHasChildren } from '../api/orcanosClient';
+import { fetchBoms, fetchChildren } from '../api/orcanosClient';
 import { useToast } from '../ui/Toast';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -35,6 +35,7 @@ import { useToast } from '../ui/Toast';
 const EXPAND_ALL_DEPTH_CAP = 20;
 const EXPAND_ALL_CONCURRENCY = 6;
 const PROBE_CONCURRENCY = 6;
+const TOP_PAGE_SIZE = 100;
 
 // Run async fn over `items` with at most `limit` in flight at a time.
 // Returns results in the same order as `items`.
@@ -78,6 +79,14 @@ const initialState = {
   nodes: [],
   topLoading: false,
   topError: null,
+  topPage: 1,
+  topPageSize: TOP_PAGE_SIZE,
+  // `Total_records` IS truthful when fetchBoms is called with the right
+  // IsNewPaging/IsReturnPageCount combo (see orcanosClient.js). We also keep
+  // a `topHasMore` heuristic so the Next button still works if a future
+  // filter ever stops returning a real total.
+  topTotal: 0,
+  topHasMore: false,
 };
 
 function findIndexByKey(nodes, key) {
@@ -94,6 +103,9 @@ function reducer(state, action) {
         ...state,
         topLoading: false,
         topError: null,
+        topPage: action.page,
+        topTotal: action.total,
+        topHasMore: action.rows.length >= action.pageSize,
         nodes: action.rows.map((row) =>
           makeNode(row, { depth: 0, isRoot: true })
         ),
@@ -226,8 +238,12 @@ function reducer(state, action) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Hook
+//
+// `topFilterId` overrides the filter used for the top-level fetch. Defaults
+// to settings.bomFilterId (BOMs view). Pass `settings.partCatalogFilterId`
+// to drive the same UI off the Part Catalog filter.
 // ─────────────────────────────────────────────────────────────────────────
-export function useBomChildren({ onAuthExpired }) {
+export function useBomChildren({ onAuthExpired, topFilterId }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { showToast } = useToast();
 
@@ -243,22 +259,55 @@ export function useBomChildren({ onAuthExpired }) {
   //             without re-fetching grand-children)
   const childCache = useRef(new Map());
 
+  // probeRowsCache: parentOriginalId -> rows[]
+  //
+  // When we expand a row, we probe each child for grandchildren (so we can
+  // render leaves without a chevron). The "probe" is a full fetchChildren
+  // call (Page_Size: 200) — we keep the rows here keyed by the parent's
+  // original_id. When the user later clicks `>` on one of those probed rows,
+  // we have the data already and skip the redundant fetch.
+  //
+  // This means: the probe cost is paid ONCE per level. Each subsequent
+  // expand is instant (cache hit), and only triggers probes for the NEXT
+  // level down.
+  const probeRowsCache = useRef(new Map());
+
   // ─── Reload top-level BOMs ─────────────────────────────────────────────
-  const loadTop = useCallback(async () => {
-    childCache.current.clear();
-    dispatch({ type: 'TOP_LOAD_START' });
-    try {
-      const { rows } = await fetchBoms({});
-      dispatch({ type: 'TOP_LOAD_OK', rows });
-    } catch (err) {
-      if (err.httpCode === 401) {
-        onAuthExpired?.(err.message);
-        return;
+  const loadTop = useCallback(
+    async (page = 1) => {
+      // Guard against a stray React event being passed when an onClick is
+      // wired as `onClick={loadTop}` instead of `onClick={() => loadTop(1)}`.
+      // Passing an event into the request body triggers a circular-JSON
+      // crash deep inside fetch.
+      const pageNum =
+        Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+      childCache.current.clear();
+      probeRowsCache.current.clear();
+      dispatch({ type: 'TOP_LOAD_START' });
+      try {
+        const { rows, total } = await fetchBoms({
+          page: pageNum,
+          pageSize: TOP_PAGE_SIZE,
+          filterId: topFilterId,
+        });
+        dispatch({
+          type: 'TOP_LOAD_OK',
+          rows,
+          total,
+          page: pageNum,
+          pageSize: TOP_PAGE_SIZE,
+        });
+      } catch (err) {
+        if (err.httpCode === 401) {
+          onAuthExpired?.(err.message);
+          return;
+        }
+        dispatch({ type: 'TOP_LOAD_FAIL', error: err.message });
+        showToast(err.message || 'Failed to load BOMs.', 'error');
       }
-      dispatch({ type: 'TOP_LOAD_FAIL', error: err.message });
-      showToast(err.message || 'Failed to load BOMs.', 'error');
-    }
-  }, [onAuthExpired, showToast]);
+    },
+    [onAuthExpired, showToast, topFilterId]
+  );
 
   // ─── Internal: load children of a node and dispatch CHILD_LOAD_OK ──────
   // Returns the rows that were attached, or null on failure / 401.
@@ -273,15 +322,40 @@ export function useBomChildren({ onAuthExpired }) {
 
       dispatch({ type: 'CHILD_LOAD_START', parentKey: nodeKey });
       try {
-        const { rows } = await fetchChildren({ parentOriginalId: row.originalId });
+        // Step 1: get the children of this row.
+        // If a parent expand already probed this `originalId`, we have the
+        // rows cached — skip the API call.
+        let rows;
+        if (row.originalId && probeRowsCache.current.has(row.originalId)) {
+          rows = probeRowsCache.current.get(row.originalId);
+        } else {
+          const result = await fetchChildren({ parentOriginalId: row.originalId });
+          rows = result.rows;
+          if (row.originalId) {
+            probeRowsCache.current.set(row.originalId, rows);
+          }
+        }
 
-        // Probe each child for grandchildren so we can render leaves vs.
-        // expandable rows without making the user click first. The probe is
-        // a Page_Size: 1 fetch — cheap. Errors fall through as `undefined`,
-        // which leaves the chevron present (we just don't know yet).
+        // Step 2: probe each child for ITS children (one level deeper) so
+        // we can render leaves without a chevron. Cache the probe result by
+        // originalId — the next time the user expands one of these rows we
+        // skip the fetch in step 1.
+        //
+        // For probes whose target is already cached (e.g. a sibling already
+        // probed it), we just read the cache without firing a network call.
         const enrichedRows = await mapWithLimit(rows, PROBE_CONCURRENCY, async (r) => {
-          const has = await probeHasChildren(r.originalId);
-          return { ...r, hasChildren: has };
+          if (!r.originalId) return { ...r, hasChildren: false };
+          if (probeRowsCache.current.has(r.originalId)) {
+            const cached = probeRowsCache.current.get(r.originalId);
+            return { ...r, hasChildren: cached.length > 0 };
+          }
+          try {
+            const probe = await fetchChildren({ parentOriginalId: r.originalId });
+            probeRowsCache.current.set(r.originalId, probe.rows);
+            return { ...r, hasChildren: probe.rows.length > 0 };
+          } catch {
+            return { ...r, hasChildren: undefined };
+          }
         });
 
         childCache.current.set(nodeKey, { rows: enrichedRows, subtree: null });
@@ -450,6 +524,10 @@ export function useBomChildren({ onAuthExpired }) {
     nodes: state.nodes,
     topLoading: state.topLoading,
     topError: state.topError,
+    topPage: state.topPage,
+    topPageSize: state.topPageSize,
+    topTotal: state.topTotal,
+    topHasMore: state.topHasMore,
     loadTop,
     toggle,
     expandAll,

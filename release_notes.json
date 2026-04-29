@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.3.0",
+    "date": "2026-04-29",
+    "changes": [
+      "Pagination on the BOMs main page — Page_Size 100, First/Prev/Next/Last buttons, status bar shows `BOMs N–M of K · page X/Y`.",
+      "API: send `IsNewPaging: 0` + `IsReturnPageCount: \"yes\"` for the top-level fetch — the only combo that returns rows AND a truthful Total_records (verified via console matrix sweep).",
+      "New 'Part Catalog' view in the sidebar — same UI as BOMs, calls filter 611. Reuses BomTree, hook, and probe cache (no duplicate code).",
+      "Probe cache: when expanding a row we already fetched the children's children — store them by `parent_original_id` so the next expand is instant. Recursive: works for any depth.",
+      "Status bar pinned at the bottom of the view — only the table area scrolls.",
+      "Settings: added `partCatalogFilterId` (default 611) to `public/settings.xml` and the read-only Settings modal.",
+      "Fix: Refresh and Retry buttons no longer pass the React click event into the request body (was triggering a circular-JSON crash). Added a numeric guard in `loadTop`.",
+      "Fix: 'Quantity' restored as a synthetic column after the column-hiding pass in 0.2.0."
+    ]
+  },
+  {
     "version": "0.2.0",
     "date": "2026-04-29",
     "changes": [

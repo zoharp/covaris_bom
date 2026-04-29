@@ -5,7 +5,7 @@ Orcanos QMS reference project). Read this once at the start of any working
 session before making changes.
 
 ### Current versions (update after every bump)
-- **App:** `0.2.0`
+- **App:** `0.3.0`
 
 ---
 
@@ -64,17 +64,52 @@ Content-Type: application/json
   "Page_Size": 200,
   "Item_Type": "PRT" | "PI",
   "Version_id": <int>,
-  "Filter_By": "[Master Part Source] = 'parent name'",   // optional
-  "IsNewPaging": 1,
-  "IsReturnPageCount": 1
+  "Filter_By": "parent_original_id = <int>",   // omit for top-level BOMs
+  "IsNewPaging": 0,
+  "IsReturnPageCount": 0
 }
 ```
 
 Success: HTTP 200, `{ "IsSuccess": true, "Data": { Object: [...], Total_records, ... } }`.
 
-Two filters from XML config:
-- **BOM Filter ID** — top-level BOMs. `Item_Type: "PRT"`. No `Filter_By`.
-- **Instance Filter ID** — children of an Assembly/BOM. `Item_Type: "PI"`. Includes `Filter_By: "[Master Part Source] = '<parent obj_name>'"`.
+**Body-shape gotchas (verified by console matrix tests — don't change without testing):**
+
+- **Top-level fetch (BOMs / Part Catalog)** uses
+  `IsNewPaging: 0` + `IsReturnPageCount: "yes"`. This is the only combo
+  that returns BOTH rows AND a truthful `Total_records` for filter 609/611.
+  Other combinations either return empty `Data: ""` or echo `Page_Size`
+  back as `Total_records`.
+- **Children fetch** uses `IsNewPaging: 0` + `IsReturnPageCount: 0`.
+  `IsReturnPageCount: 1` returned empty data for the `parent_original_id`
+  filter; we don't need the count for children anyway.
+- **Children filter is `parent_original_id = <int>`** — NOT
+  `[Master Part Source] = '<obj_name>'` (that column doesn't exist on
+  filter 610). The value is unquoted (numeric).
+- **`IsReturnPageCount` accepts `"yes"` or `"true"` (strings) but not `1`
+  or `true` (boolean).** Numeric/boolean values trigger an empty response.
+
+**Three filters from XML config:**
+- **BOM Filter ID** (`bomFilterId`) — top-level BOMs view. `Item_Type: "PRT"`. No `Filter_By`.
+- **Instance Filter ID** (`instanceFilterId`) — children of an Assembly/BOM. `Item_Type: "PI"`. `Filter_By: "parent_original_id = <int>"`.
+- **Part Catalog Filter ID** (`partCatalogFilterId`) — same as BOM Filter but a different filter (defaults to 611). Drives the "Part Catalog" sidebar view via the same `BomTree` component, just with a different `topFilterId`.
+
+**Where the parent's original_id comes from** (computed in `_normalizeRow`,
+exposed as `row.originalId`):
+- For **PRTs (top-level BOMs)** — the parenthetical number in `Id`
+  (e.g. `46584 (42195)` → `42195`). Same as `row.itemId`.
+- For **PIs** — the digits between the first two hyphens of the row's
+  `Master Part Source` value (e.g. `PRT-39382-901631 7 mm Wide ...`
+  → `39382`). The PI is an *instance of* PRT 39382, so its children
+  are PRT 39382's PIs.
+
+**Field value extraction** (`byName` / `byTitle` in `_normalizeRow`):
+- Picklist fields (Status, Severity, etc.) put the human-readable label in
+  `Display_text` and the internal id in `Text`. We try in this order:
+  `Display_text → Display → Text → Value`. So pickilsts render their label,
+  not "12".
+- We also expose `byTitle(t)` because PRTs and PIs sometimes use the same
+  Title with different `Name`s (e.g. PRT has `Name: "Status"` while PI has
+  `Name: "PI_Status"` but both have `Title: "Status"`).
 
 ---
 
@@ -90,8 +125,9 @@ read-only viewer.
 <covarisBomSettings>
   <baseUrl>https://us.orcanos.com/covaris/</baseUrl>
   <versionId>5</versionId>
-  <bomFilterId>519</bomFilterId>
-  <instanceFilterId>520</instanceFilterId>
+  <bomFilterId>609</bomFilterId>
+  <instanceFilterId>610</instanceFilterId>
+  <partCatalogFilterId>611</partCatalogFilterId>
 </covarisBomSettings>
 ```
 
@@ -154,25 +190,29 @@ features) or `ui/` (more shared components).
 
 1. **Columns are dynamic.** Read the `Field` array of the first returned row and
    render columns in `Web_order` order. Don't hard-code a column list.
-2. **`Quantity` column:** for top-level BOMs the API doesn't return it — render
-   `1`. For child PIs render the API's `Quantity` field.
-3. **`Master Part Source` column:** for top-level BOMs, render empty. For child
-   PIs, render the API field.
-4. **"Orcanos Link" column** (synthetic): always present. Builds
-   `<base>web/<version>/items/view?Item=<PRT|PI>&ItemId=<id>` where `<id>` is
-   parsed from the row's `Key` field — the parenthetical number, e.g.
-   `PRT-34237-310020 (34237)` → `34237`.
-5. **Icons depend on expand state.** A row that has never been expanded shows a
-   chevron and a generic icon. After first expand:
-   - children > 0 → keep chevron, switch icon to Assembly (`🔧`).
-   - children = 0 → remove chevron, switch icon to Part (`🧩`).
-   - top-level rows always show BOM (`🏭`) regardless.
-6. **`Filter_By` quoting:** single-quote the value, escape any internal
-   single-quote by doubling. `O'Brien` → `'O''Brien'`. The helper is in
-   `orcanosClient.js`.
-7. **Expand-all** is per-BOM only. Depth cap 20, concurrency cap 6. There is
+2. **Hidden dynamic columns** (in `BomTree.jsx` → `HIDDEN_COLUMN_KEYS`):
+   `Copy As Link`, `In Pool`, `Is Branch`, `Original ID`, `ID`, `Quantity`,
+   `Master Part Source`, `Revision`, `Part Revision`. Match is on either
+   `Name` or `Title`, normalized (lowercase, spaces/underscores merged).
+   The data is still on each row — we just don't render the column.
+3. **Synthetic columns** (always at the end, in this order):
+   - `__quantity` — `1` for PRTs, `byName('Quantity')` for PIs.
+   - `__revision` — merges PRT's `Revision` and PI's `Part Revision`.
+   - `__orcanosLink` — `<base>web/<version>/items/view?Item=<PRT|PI>&ItemId=<id>`
+     where `<id>` is `row.itemId` (parenthetical from `Id`).
+4. **Icons** (`src/bom/icons.jsx`):
+   - **BOM** (root): hierarchy tree, `--accent-primary` (purple).
+   - **Assembly** (non-root with children): gear, `--accent-orange`.
+   - **Part** (leaf): hex nut, `--text-secondary`.
+   - **Unknown** (probed-but-loading or unprobed): dashed square outline.
+5. **Probe-on-expand.** When a row is expanded, after fetching its children
+   we fire a Page_Size 1 probe per child (concurrency cap 6) to set
+   `row.hasChildren`. That decides chevron vs leaf without making the user
+   click first. Grandchildren are NOT loaded — only existence is checked.
+   See `useBomChildren.js → loadChildren` and `orcanosClient.js → probeHasChildren`.
+6. **Expand-all** is per-BOM only. Depth cap 20, concurrency cap 6. There is
    **no global "expand everything"** button.
-8. **Search is client-side** over loaded rows only. We don't query Orcanos for
+7. **Search is client-side** over loaded rows only. We don't query Orcanos for
    search.
 
 ---

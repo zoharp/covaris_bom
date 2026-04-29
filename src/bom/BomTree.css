@@ -128,9 +128,8 @@
 
 .bom-grid-wrap {
   flex: 1;
+  min-height: 0;       /* allow the flex child to shrink so overflow works */
   overflow: auto;
-  display: flex;
-  flex-direction: column;
 }
 
 .bom-grid {
@@ -275,11 +274,62 @@
 /* ─── Status bar ────────────────────────────────────────────── */
 
 .bom-status-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding: 8px 20px;
   border-top: 1px solid var(--border-color);
   font-size: 12px;
   color: var(--text-secondary);
   background: var(--bg-secondary);
+}
+
+.bom-status-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bom-pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.bom-pagination button {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: var(--font);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bom-pagination button:hover:not(:disabled) {
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+  color: var(--accent-primary);
+}
+
+.bom-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bom-pagination-info {
+  padding: 0 8px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 /* ─── Spinner ring (used by Spinner.jsx) ────────────────────── */

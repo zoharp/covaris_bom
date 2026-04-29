@@ -26,4 +26,5 @@
   <versionId>5</versionId>
   <bomFilterId>609</bomFilterId>
   <instanceFilterId>610</instanceFilterId>
+  <partCatalogFilterId>611</partCatalogFilterId>
 </covarisBomSettings>

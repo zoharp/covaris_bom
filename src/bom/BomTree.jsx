@@ -42,8 +42,8 @@ function normalizeColKey(s) {
     .trim();
 }
 
-export default function BomTree({ onAuthExpired }) {
-  const tree = useBomChildren({ onAuthExpired });
+export default function BomTree({ onAuthExpired, topFilterId, topLabel = 'BOMs' }) {
+  const tree = useBomChildren({ onAuthExpired, topFilterId });
   const [search, setSearch] = useState('');
   const debounced = useDebounced(search, 200);
 
@@ -170,7 +170,7 @@ export default function BomTree({ onAuthExpired }) {
           <input
             className="bom-search-input"
             type="text"
-            placeholder="Search loaded BOMs by name…"
+            placeholder={`Search loaded ${topLabel} by name…`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -188,7 +188,7 @@ export default function BomTree({ onAuthExpired }) {
         <button
           type="button"
           className="bom-refresh-btn"
-          onClick={tree.loadTop}
+          onClick={() => tree.loadTop(1)}
           disabled={tree.topLoading}
         >
           {tree.topLoading ? <Spinner size={14} /> : '⟳'}
@@ -199,15 +199,15 @@ export default function BomTree({ onAuthExpired }) {
       {tree.topLoading && tree.nodes.length === 0 && (
         <div className="bom-empty">
           <Spinner size={20} />
-          <p>Loading BOMs…</p>
+          <p>Loading {topLabel}…</p>
         </div>
       )}
 
       {!tree.topLoading && tree.nodes.length === 0 && tree.topError && (
         <div className="bom-empty">
-          <p className="bom-empty-error">Failed to load BOMs.</p>
+          <p className="bom-empty-error">Failed to load {topLabel}.</p>
           <p className="bom-empty-detail">{tree.topError}</p>
-          <button className="btn-secondary" onClick={tree.loadTop}>
+          <button className="btn-secondary" onClick={() => tree.loadTop(1)}>
             Retry
           </button>
         </div>
@@ -215,41 +215,104 @@ export default function BomTree({ onAuthExpired }) {
 
       {!tree.topLoading && tree.nodes.length === 0 && !tree.topError && (
         <div className="bom-empty">
-          <p>No BOMs found.</p>
+          <p>No {topLabel} found.</p>
         </div>
       )}
 
       {tree.nodes.length > 0 && columns && (
-        <div className="bom-grid-wrap">
-          <table className="bom-grid">
-            <thead>
-              <tr>
-                <th className="bom-col-tree">Tree</th>
-                {columns.map((c) => (
-                  <th key={c.key}>{c.title}</th>
+        <>
+          <div className="bom-grid-wrap">
+            <table className="bom-grid">
+              <thead>
+                <tr>
+                  <th className="bom-col-tree">Tree</th>
+                  {columns.map((c) => (
+                    <th key={c.key}>{c.title}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleNodes.map((node) => (
+                  <BomRow
+                    key={node.nodeKey}
+                    node={node}
+                    columns={columns}
+                    onToggle={() => tree.toggle(node)}
+                    onExpandAll={() => handleExpandAll(node)}
+                    expandAllProgress={progress[node.nodeKey]}
+                  />
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleNodes.map((node) => (
-                <BomRow
-                  key={node.nodeKey}
-                  node={node}
-                  columns={columns}
-                  onToggle={() => tree.toggle(node)}
-                  onExpandAll={() => handleExpandAll(node)}
-                  expandAllProgress={progress[node.nodeKey]}
-                />
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
 
           <div className="bom-status-bar">
-            {visibleSet
-              ? `Showing ${visibleNodes.length} of ${tree.nodes.length} loaded rows`
-              : `Showing ${tree.nodes.filter((n) => n.depth === 0).length} root BOMs · ${tree.nodes.length} total loaded rows`}
+            <div className="bom-status-info">
+              {(() => {
+                const rootsOnPage = tree.nodes.filter((n) => n.depth === 0).length;
+                const startIdx = (tree.topPage - 1) * tree.topPageSize + 1;
+                const endIdx = startIdx + rootsOnPage - 1;
+                const knownTotal = tree.topTotal > tree.topPageSize ? tree.topTotal : null;
+                if (visibleSet) {
+                  return `Showing ${visibleNodes.length} of ${tree.nodes.length} loaded rows · page ${tree.topPage}`;
+                }
+                if (knownTotal) {
+                  const totalPages = Math.max(1, Math.ceil(knownTotal / tree.topPageSize));
+                  return `${topLabel} ${startIdx}–${endIdx} of ${knownTotal} · page ${tree.topPage}/${totalPages} · ${tree.nodes.length} total loaded rows`;
+                }
+                if (tree.topPage > 1 || tree.topHasMore) {
+                  return `${topLabel} ${startIdx}–${endIdx} · page ${tree.topPage} · ${tree.nodes.length} total loaded rows`;
+                }
+                return `${rootsOnPage} ${topLabel} · ${tree.nodes.length} total loaded rows`;
+              })()}
+            </div>
+            {(() => {
+              const knownTotal = tree.topTotal > tree.topPageSize ? tree.topTotal : null;
+              const totalPages = knownTotal ? Math.max(1, Math.ceil(knownTotal / tree.topPageSize)) : null;
+              const hasNext = totalPages
+                ? tree.topPage < totalPages
+                : tree.topHasMore;
+              if (!totalPages && !tree.topHasMore && tree.topPage <= 1) return null;
+              return (
+                <div className="bom-pagination">
+                  {totalPages && (
+                    <button
+                      type="button"
+                      onClick={() => tree.loadTop(1)}
+                      disabled={tree.topPage <= 1 || tree.topLoading}
+                      aria-label="First page"
+                    >‹‹</button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => tree.loadTop(tree.topPage - 1)}
+                    disabled={tree.topPage <= 1 || tree.topLoading}
+                    aria-label="Previous page"
+                  >‹ Prev</button>
+                  <span className="bom-pagination-info">
+                    {totalPages
+                      ? `${tree.topPage} / ${totalPages}`
+                      : `Page ${tree.topPage}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => tree.loadTop(tree.topPage + 1)}
+                    disabled={!hasNext || tree.topLoading}
+                    aria-label="Next page"
+                  >Next ›</button>
+                  {totalPages && (
+                    <button
+                      type="button"
+                      onClick={() => tree.loadTop(totalPages)}
+                      disabled={tree.topPage >= totalPages || tree.topLoading}
+                      aria-label="Last page"
+                    >››</button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

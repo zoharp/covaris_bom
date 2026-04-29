@@ -3,6 +3,8 @@ import './Sidebar.css';
 
 export default function Sidebar({
   username,
+  view,
+  onSelectView,
   onOpenSettings,
   onOpenReleaseNotes,
   onSignOut,
@@ -17,9 +19,25 @@ export default function Sidebar({
       </div>
 
       <nav className="sidebar-nav">
-        <button className="sidebar-item sidebar-item--active" type="button">
+        <button
+          className={
+            'sidebar-item' + (view === 'boms' ? ' sidebar-item--active' : '')
+          }
+          type="button"
+          onClick={() => onSelectView('boms')}
+        >
           <span className="sidebar-item-icon">📋</span>
           <span>BOMs</span>
+        </button>
+        <button
+          className={
+            'sidebar-item' + (view === 'parts' ? ' sidebar-item--active' : '')
+          }
+          type="button"
+          onClick={() => onSelectView('parts')}
+        >
+          <span className="sidebar-item-icon">🧩</span>
+          <span>Part Catalog</span>
         </button>
         <button
           className="sidebar-item"
