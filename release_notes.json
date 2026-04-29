@@ -1,5 +1,13 @@
 [
   {
+    "version": "0.3.1",
+    "date": "2026-04-29",
+    "changes": [
+      "Sidebar: Settings and Release Notes moved into a popup menu that opens on the username at the bottom. Main nav now contains only BOMs and Part Catalog.",
+      "Popup closes on click-outside or Esc."
+    ]
+  },
+  {
     "version": "0.3.0",
     "date": "2026-04-29",
     "changes": [
