@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Covaris BOM Viewer — runtime configuration
+
+  This file is read by the app at startup and used everywhere.
+  The Settings screen in the running app DISPLAYS these values
+  read-only — there is no in-app editing.
+
+  To change settings:
+    1. Edit the values below.
+    2. Commit the change.
+    3. Redeploy (deploy.bat or deploy.sh).
+
+  Field reference:
+    baseUrl           Base URL of the Orcanos environment.
+                      Must end with a trailing slash.
+                      Example: https://us.orcanos.com/covaris/
+    versionId         Orcanos Version ID (used in filter calls and
+                      in the "Orcanos Link" URL).
+    bomFilterId       Filter ID for top-level BOMs (Item_Type=PRT).
+    instanceFilterId  Filter ID for child Part Instances
+                      (Item_Type=PI).
+-->
+<covarisBomSettings>
+  <baseUrl>https://us.orcanos.com/covaris/</baseUrl>
+  <versionId>5</versionId>
+  <bomFilterId>609</bomFilterId>
+  <instanceFilterId>610</instanceFilterId>
+</covarisBomSettings>

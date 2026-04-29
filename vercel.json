@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+
+  "rewrites": [
+    {
+      "source": "/api/orcanos/:path*",
+      "destination": "https://us.orcanos.com/covaris/api/v2/Json/:path*"
+    }
+  ]
+}

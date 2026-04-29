@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+.vercel
+.DS_Store
+*.log
+.vite
+.claude/
+*.zip
+run_claude.bat

@@ -1,0 +1,301 @@
+.bom-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Toolbar ───────────────────────────────────────────────── */
+
+.bom-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.bom-search {
+  position: relative;
+  flex: 1;
+  max-width: 480px;
+}
+
+.bom-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.bom-search-input {
+  width: 100%;
+  padding: 9px 36px 9px 34px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.bom-search-input:focus {
+  border-color: #7B52C8;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(123, 82, 200, 0.10);
+}
+
+.bom-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.bom-search-clear:hover {
+  background: var(--accent-light);
+  color: var(--text-primary);
+}
+
+.bom-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bom-refresh-btn:hover:not(:disabled) {
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+}
+
+.bom-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Empty / loading states ────────────────────────────────── */
+
+.bom-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.bom-empty-error {
+  color: var(--status-error);
+  font-weight: 600;
+  margin: 0;
+}
+
+.bom-empty-detail {
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 480px;
+  text-align: center;
+  margin: 0;
+}
+
+/* ─── Grid ──────────────────────────────────────────────────── */
+
+.bom-grid-wrap {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.bom-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: var(--font);
+}
+
+.bom-grid thead {
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  z-index: 1;
+}
+
+.bom-grid thead th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--accent-border);
+  background: var(--bg-primary);
+  white-space: nowrap;
+}
+
+.bom-grid tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.1s;
+}
+
+.bom-grid tbody tr:nth-child(even) {
+  background: #FAFAFE;
+}
+
+.bom-grid tbody tr:hover {
+  background: rgba(92, 53, 168, 0.04);
+}
+
+.bom-row--errored {
+  background: rgba(239, 68, 68, 0.06) !important;
+}
+
+.bom-row--root {
+  font-weight: 600;
+}
+
+.bom-grid td {
+  padding: 8px 12px;
+  vertical-align: middle;
+  color: var(--text-primary);
+}
+
+.bom-col-tree { width: 1%; white-space: nowrap; }
+
+/* ─── Tree cell internals (chevron + icon) ──────────────────── */
+
+.bom-cell-tree {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bom-chevron {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.bom-chevron:hover:not(:disabled) {
+  background: var(--accent-light);
+  color: var(--accent-primary);
+}
+
+.bom-chevron:disabled {
+  cursor: default;
+}
+
+.bom-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.bom-expand-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 2px 6px;
+  margin-left: 4px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.bom-expand-all-btn:hover {
+  color: var(--accent-primary);
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+}
+
+.bom-expand-all-progress {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Cell types ────────────────────────────────────────────── */
+
+.bom-col-text {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bom-col-text:hover {
+  white-space: normal;
+  overflow: visible;
+}
+
+.bom-col-link a {
+  color: var(--accent-orange);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.bom-col-link a:hover {
+  text-decoration: underline;
+}
+
+/* ─── Status bar ────────────────────────────────────────────── */
+
+.bom-status-bar {
+  padding: 8px 20px;
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+/* ─── Spinner ring (used by Spinner.jsx) ────────────────────── */
+
+.spinner-ring {
+  display: inline-block;
+  border: 2px solid;
+  border-radius: 50%;
+  animation: spinner-spin 0.8s linear infinite;
+}
+
+@keyframes spinner-spin {
+  to { transform: rotate(360deg); }
+}
