@@ -128,8 +128,17 @@ read-only viewer.
   <bomFilterId>609</bomFilterId>
   <instanceFilterId>610</instanceFilterId>
   <partCatalogFilterId>611</partCatalogFilterId>
+  <pageSize>50</pageSize>
+  <bomNamePrefixes>50,51,52,53</bomNamePrefixes>
 </covarisBomSettings>
 ```
+
+Field reference:
+- `pageSize` — top-level `Page_Size` for BOMs / Part Catalog (default 50,
+  clamped 1..500). Also drives the pagination math in the status bar.
+- `bomNamePrefixes` — comma-separated list of `Obj_name` prefixes that mark
+  a row as a BOM in the **Part Catalog** view (renders the BOM icon
+  regardless of children state). Empty / whitespace entries are ignored.
 
 The loader is `src/settings/settingsStore.js`. It exposes `loadSettings()` (async,
 called once at app start) and `getSettings()` (sync, used everywhere else).
@@ -186,6 +195,22 @@ features) or `ui/` (more shared components).
 
 ---
 
+## Two views, one component
+
+The sidebar has **BOMs** and **Part Catalog**. Both render `BomTree` —
+the only differences passed via props are:
+
+- `topFilterId` — `bomFilterId` (609) vs `partCatalogFilterId` (611).
+- `topLabel` — `"BOMs"` vs `"Parts"` (used only for human-readable strings).
+- `view` — `'boms'` or `'parts'`. Used by `BomRow` for the BOM-by-name
+  prefix override (Parts only) and the always-BomIcon-on-root rule
+  (BOMs only).
+
+Switching views remounts `BomTree` via `key={`${view}/${authEpoch}`}`,
+so the cache and pagination reset cleanly.
+
+---
+
 ## Tree-grid behavior — non-obvious details
 
 1. **Columns are dynamic.** Read the `Field` array of the first returned row and
@@ -201,19 +226,28 @@ features) or `ui/` (more shared components).
    - `__orcanosLink` — `<base>web/<version>/items/view?Item=<PRT|PI>&ItemId=<id>`
      where `<id>` is `row.itemId` (parenthetical from `Id`).
 4. **Icons** (`src/bom/icons.jsx`):
-   - **BOM** (root): hierarchy tree, `--accent-primary` (purple).
-   - **Assembly** (non-root with children): gear, `--accent-orange`.
-   - **Part** (leaf): hex nut, `--text-secondary`.
-   - **Unknown** (probed-but-loading or unprobed): dashed square outline.
-5. **Probe-on-expand.** When a row is expanded, after fetching its children
-   we fire a Page_Size 1 probe per child (concurrency cap 6) to set
-   `row.hasChildren`. That decides chevron vs leaf without making the user
-   click first. Grandchildren are NOT loaded — only existence is checked.
-   See `useBomChildren.js → loadChildren` and `orcanosClient.js → probeHasChildren`.
+   - **BOM**: hierarchy tree, `--accent-primary` (purple). Used for roots
+     in BOMs view, AND for any Part Catalog row whose `Obj_name` starts with
+     a prefix in `bomNamePrefixes` (settings.xml).
+   - **Assembly** (has children, not a BOM-by-name): gear, `--accent-orange`.
+   - **Part** (no children): hex nut, `--text-secondary`. Chevron is hidden.
+   - **Unknown** (children unknown — not yet probed/expanded): dashed square.
+5. **Probe-on-expand.** Probing only runs when the user **clicks `>`**, never
+   on initial page load or pagination. After fetching the row's children we
+   probe each child with a full `fetchChildren` call (concurrency 6) and
+   set `row.hasChildren`. That decides chevron vs leaf for those children
+   before the user has to click them. Probe rows are cached by
+   `parent_original_id` in `probeRowsCache`, so the user's first click on a
+   probed child is instant (skip the redundant fetch).
 6. **Expand-all** is per-BOM only. Depth cap 20, concurrency cap 6. There is
    **no global "expand everything"** button.
-7. **Search is client-side** over loaded rows only. We don't query Orcanos for
-   search.
+7. **Search is server-side.** Typing in the toolbar search box re-runs the
+   top-level fetch with `Filter_By: [Obj_name] LIKE '%query%'` (debounced
+   350ms). Resets to page 1 on each query change. Children fetched on
+   expand are NOT filtered.
+8. **Pagination** uses `Page_Size` from settings.xml (`pageSize`, default 50).
+   The "real" total comes from `Total_records` when the API returns it; we
+   also track `topHasMore = rows.length >= pageSize` as a fallback.
 
 ---
 
