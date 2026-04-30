@@ -260,14 +260,19 @@
   white-space: nowrap;
 }
 
-.bom-col-link a {
-  color: var(--accent-orange);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 12px;
+/* The Key column is the canonical link to the Orcanos record. */
+.bom-col-key {
+  white-space: nowrap;
 }
 
-.bom-col-link a:hover {
+.bom-col-key a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.bom-col-key a:hover {
+  color: var(--accent-hover);
   text-decoration: underline;
 }
 

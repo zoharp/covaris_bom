@@ -88,7 +88,6 @@ export default function BomTree({
       ...dynamic,
       { key: '__quantity', title: 'Quantity' },
       { key: '__revision', title: 'Revision' },
-      { key: '__orcanosLink', title: 'Orcanos Link' },
     ];
   }, [tree.nodes]);
 

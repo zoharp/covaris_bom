@@ -97,10 +97,17 @@ export default function BomRow({
         ''
       );
     }
-    if (colKey === '__orcanosLink') {
-      return null; // rendered as a <a> below
-    }
     return node.row.byName(colKey) || node.row.byTitle(colKey) || '';
+  }
+
+  // The "Key" column (Name = User_Prefix, Title = "Key") is rendered as a
+  // hyperlink to the matching Orcanos record. Detect it here so the column
+  // logic stays generic.
+  function isKeyColumn(c) {
+    return (
+      c.key === 'User_Prefix' ||
+      String(c.title || '').trim().toLowerCase() === 'key'
+    );
   }
 
   return (
@@ -152,24 +159,24 @@ export default function BomRow({
 
       {/* Dynamic + synthetic columns */}
       {columns.map((c) => {
-        if (c.key === '__orcanosLink') {
+        const value = valueFor(c.key);
+        const tooltip = String(value).replace(/<[^>]+>/g, '').trim();
+
+        if (isKeyColumn(c) && linkHref) {
           return (
-            <td key={c.key} className="bom-col-link">
-              {linkHref && (
-                <a
-                  href={linkHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Orcanos Link
-                </a>
-              )}
+            <td key={c.key} className="bom-col-key" title={tooltip}>
+              <a
+                href={linkHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(value),
+                }}
+              />
             </td>
           );
         }
 
-        const value = valueFor(c.key);
-        const tooltip = String(value).replace(/<[^>]+>/g, '').trim();
         return (
           <td key={c.key} className="bom-col-text" title={tooltip}>
             {/* Field text may contain HTML — sanitize then render. */}

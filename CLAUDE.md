@@ -5,7 +5,7 @@ Orcanos QMS reference project). Read this once at the start of any working
 session before making changes.
 
 ### Current versions (update after every bump)
-- **App:** `0.3.2`
+- **App:** `0.3.3`
 
 ---
 
@@ -223,8 +223,10 @@ so the cache and pagination reset cleanly.
 3. **Synthetic columns** (always at the end, in this order):
    - `__quantity` — `1` for PRTs, `byName('Quantity')` for PIs.
    - `__revision` — merges PRT's `Revision` and PI's `Part Revision`.
-   - `__orcanosLink` — `<base>web/<version>/items/view?Item=<PRT|PI>&ItemId=<id>`
-     where `<id>` is `row.itemId` (parenthetical from `Id`).
+   The Orcanos web link lives on the **Key** column itself (Name=`User_Prefix`,
+   Title=`Key`) — rendered as a purple hyperlink to
+   `<base>web/<version>/items/view?Item=<PRT|PI>&ItemId=<id>` where `<id>` is
+   `row.itemId` (parenthetical from `Id`). No separate link column.
 4. **Icons** (`src/bom/icons.jsx`):
    - **BOM**: hierarchy tree, `--accent-primary` (purple). Used for roots
      in BOMs view, AND for any Part Catalog row whose `Obj_name` starts with

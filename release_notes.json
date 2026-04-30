@@ -1,5 +1,12 @@
 [
   {
+    "version": "0.3.3",
+    "date": "2026-04-30",
+    "changes": [
+      "Orcanos record link moved onto the Key column itself — the Key is now a purple hyperlink that opens the matching PRT/PI in Orcanos. Removed the separate 'Orcanos Link' column."
+    ]
+  },
+  {
     "version": "0.3.2",
     "date": "2026-04-29",
     "changes": [
