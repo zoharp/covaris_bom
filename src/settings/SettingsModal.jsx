@@ -52,6 +52,11 @@ export default function SettingsModal({ onClose }) {
           <Field label="BOM Filter ID" value={String(s.bomFilterId)} />
           <Field label="Instance Filter ID" value={String(s.instanceFilterId)} />
           <Field label="Part Catalog Filter ID" value={String(s.partCatalogFilterId)} />
+          <Field label="Page Size" value={String(s.pageSize)} />
+          <Field
+            label="BOM Name Prefixes"
+            value={(s.bomNamePrefixes || []).join(', ')}
+          />
 
           <div className="settings-divider" />
 

@@ -150,6 +150,7 @@ export async function fetchBoms({
   versionId,
   page = 1,
   pageSize = 100,
+  searchQuery = null,
 } = {}) {
   const { bomFilterId, versionId: defaultVersion } = getSettings();
   const body = {
@@ -167,6 +168,13 @@ export async function fetchBoms({
     IsNewPaging: 0,
     IsReturnPageCount: 'yes',
   };
+  // Server-side name search — used by the Part Catalog search box so it
+  // can find items beyond the current page. Single-quote-escaped, SQL LIKE.
+  const q = searchQuery == null ? '' : String(searchQuery).trim();
+  if (q) {
+    const escaped = q.replace(/'/g, "''");
+    body.Filter_By = `[Obj_name] LIKE '%${escaped}%'`;
+  }
   return await _fetchFilter(body);
 }
 

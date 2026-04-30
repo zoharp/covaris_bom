@@ -78,6 +78,7 @@ function AppShell() {
             <BomTree
               key={`${view}/${authEpoch}`}
               onAuthExpired={handleAuthExpired}
+              view={view}
               topFilterId={isBoms ? s.bomFilterId : s.partCatalogFilterId}
               topLabel={isBoms ? 'BOMs' : 'Parts'}
             />

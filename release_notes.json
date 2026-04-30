@@ -1,5 +1,16 @@
 [
   {
+    "version": "0.3.2",
+    "date": "2026-04-29",
+    "changes": [
+      "Server-side search: typing in the search box now hits Orcanos with `Filter_By: [Obj_name] LIKE '%query%'` so matches across all pages are returned (BOMs and Part Catalog).",
+      "Page size is configurable: edit `<pageSize>` in `public/settings.xml` (default 50, clamped 1..500). Shown in the Settings modal.",
+      "BOM name prefixes for the Part Catalog are configurable: `<bomNamePrefixes>50,51,52,53</bomNamePrefixes>` in settings.xml. Items whose Obj_name starts with any prefix render the BOM icon.",
+      "Probe-on-expand brought back (only when you click `>`, never on initial page load). Each click fetches the row's children + probes one level deeper so leaves render without a chevron. Probe results cached by `parent_original_id` so the next click on a probed child is instant.",
+      "Initial page load and pagination are now single-fetch (no upfront probing) — no multi-second wait when switching pages or views."
+    ]
+  },
+  {
     "version": "0.3.1",
     "date": "2026-04-29",
     "changes": [

@@ -9,32 +9,46 @@ import {
 import Spinner from '../ui/Spinner';
 import { sanitizeHtml } from '../utils/sanitizeHtml';
 import { orcanosItemUrl } from '../api/orcanosClient';
+import { getSettings } from '../settings/settingsStore';
 
 const INDENT_PX = 24;
 
 export default function BomRow({
   node,
+  view = 'boms',
   columns,
   onToggle,
   onExpandAll,
   expandAllProgress,
 }) {
   const isRoot = node.isRoot;
-  // After first expand, we know whether this is an Assembly or a leaf Part.
-  const knownLeaf = node.loaded && node.childCount === 0 && !isRoot;
-  const knownAssembly = node.loaded && node.childCount > 0 && !isRoot;
-  // Probed-from-parent-expand: we already know whether this row has children
-  // even though it hasn't been expanded yet. `hasChildren === undefined` means
-  // "unknown" — fall through to the existing logic (show chevron).
-  const probedLeaf = !isRoot && node.row.hasChildren === false;
-  const probedAssembly = !isRoot && node.row.hasChildren === true;
+
+  // Children-state flags. `hasChildren` is set by the probe pass on every
+  // row (top-level and child) so leaf detection works before any click.
+  const knownLeaf = node.loaded && node.childCount === 0;
+  const knownAssembly = node.loaded && node.childCount > 0;
+  const probedLeaf = node.row.hasChildren === false;
+  const probedAssembly = node.row.hasChildren === true;
 
   const isLeaf = knownLeaf || probedLeaf;
   const isAssembly = knownAssembly || probedAssembly;
 
-  // Icon selection
+  // Part Catalog: items whose Obj_name starts with one of the configured
+  // BOM prefixes (`bomNamePrefixes` in settings.xml — defaults to
+  // 50,51,52,53) render the BOM icon regardless of children state.
+  const objName = String(node.row.objName || '').trimStart();
+  const bomPrefixes =
+    view === 'parts' ? getSettings().bomNamePrefixes || [] : [];
+  const isBomByName = bomPrefixes.some(
+    (p) => p && objName.startsWith(p)
+  );
+
+  // Icon selection. BOMs view: roots always render as BOM icons (they ARE
+  // the BOM filter). Parts view: name-prefix rule wins, then assembly/leaf,
+  // then unknown if we don't yet know.
   let iconNode;
-  if (isRoot) iconNode = <BomIcon />;
+  if (view === 'boms' && isRoot) iconNode = <BomIcon />;
+  else if (isBomByName) iconNode = <BomIcon />;
   else if (isAssembly) iconNode = <AssemblyIcon />;
   else if (isLeaf) iconNode = <PartIcon />;
   else iconNode = <UnknownChildIcon />;

@@ -8,6 +8,8 @@ const FALLBACK = {
   bomFilterId: 609,
   instanceFilterId: 610,
   partCatalogFilterId: 611,
+  pageSize: 50,
+  bomNamePrefixes: ['50', '51', '52', '53'],
 };
 
 let _settings = null;
@@ -32,12 +34,26 @@ function parseXml(xmlText) {
   // Always end the base URL with a slash — downstream URL builders rely on it.
   if (!baseUrl.endsWith('/')) baseUrl += '/';
 
+  // Page size is clamped to a sane range so a typo doesn't blow up the UI.
+  let pageSize = getInt('pageSize', FALLBACK.pageSize);
+  if (pageSize < 1) pageSize = FALLBACK.pageSize;
+  if (pageSize > 500) pageSize = 500;
+
+  // Comma-separated list of name prefixes that mark an item as a BOM in the
+  // Part Catalog view. Empty entries are dropped so a trailing comma is fine.
+  const rawPrefixes = get('bomNamePrefixes');
+  const bomNamePrefixes = rawPrefixes
+    ? rawPrefixes.split(',').map((s) => s.trim()).filter(Boolean)
+    : [...FALLBACK.bomNamePrefixes];
+
   return {
     baseUrl,
     versionId: getInt('versionId', FALLBACK.versionId),
     bomFilterId: getInt('bomFilterId', FALLBACK.bomFilterId),
     instanceFilterId: getInt('instanceFilterId', FALLBACK.instanceFilterId),
     partCatalogFilterId: getInt('partCatalogFilterId', FALLBACK.partCatalogFilterId),
+    pageSize,
+    bomNamePrefixes,
   };
 }
 

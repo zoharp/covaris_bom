@@ -42,18 +42,31 @@ function normalizeColKey(s) {
     .trim();
 }
 
-export default function BomTree({ onAuthExpired, topFilterId, topLabel = 'BOMs' }) {
-  const tree = useBomChildren({ onAuthExpired, topFilterId });
+export default function BomTree({
+  onAuthExpired,
+  view = 'boms',
+  topFilterId,
+  topLabel = 'BOMs',
+}) {
   const [search, setSearch] = useState('');
-  const debounced = useDebounced(search, 200);
+  // 350ms debounce — slightly longer than client-only filtering since each
+  // change now triggers a server roundtrip.
+  const debounced = useDebounced(search, 350);
+  const tree = useBomChildren({
+    onAuthExpired,
+    topFilterId,
+    topSearchQuery: debounced,
+  });
 
   // Per-root progress for "Expand all" — { rootUid: "12 / 47" or null }.
   const [progress, setProgress] = useState({});
 
+  // Re-runs on mount AND whenever `loadTop`'s identity changes — which
+  // happens when topFilterId or topSearchQuery changes (see hook's useCallback
+  // deps). So changing the search box re-fetches page 1 with the new query.
   useEffect(() => {
-    tree.loadTop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    tree.loadTop(1);
+  }, [tree.loadTop]);
 
   // ─── Column derivation ────────────────────────────────────────
   // Read column definitions from the first top-level row's Field array,
@@ -236,6 +249,7 @@ export default function BomTree({ onAuthExpired, topFilterId, topLabel = 'BOMs' 
                   <BomRow
                     key={node.nodeKey}
                     node={node}
+                    view={view}
                     columns={columns}
                     onToggle={() => tree.toggle(node)}
                     onExpandAll={() => handleExpandAll(node)}

@@ -27,4 +27,11 @@
   <bomFilterId>609</bomFilterId>
   <instanceFilterId>610</instanceFilterId>
   <partCatalogFilterId>611</partCatalogFilterId>
+  <pageSize>50</pageSize>
+  <!--
+    Comma-separated list of name/ID prefixes that mark an item as a BOM
+    in the Part Catalog view (renders the BOM icon regardless of children).
+    Match is on the row's Obj_name with leading whitespace trimmed.
+  -->
+  <bomNamePrefixes>50,51,52,53</bomNamePrefixes>
 </covarisBomSettings>
