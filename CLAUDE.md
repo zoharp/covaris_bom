@@ -5,7 +5,7 @@ Orcanos QMS reference project). Read this once at the start of any working
 session before making changes.
 
 ### Current versions (update after every bump)
-- **App:** `1.0.3`
+- **App:** `1.0.4`
 
 ---
 
@@ -274,23 +274,35 @@ BOM rows (root nodes in BOMs view, or `isBomByName` rows in Parts view) have a
 `⋯` button in the Tree cell. Clicking it opens a one-item dropdown (extensible);
 choosing **Export** opens `ExportModal`.
 
-`ExportModal` lets the user pick a format and whether to include an Orcanos URL
-column, then calls the matching function from `src/bom/exportUtils.js`:
+`ExportModal` has two selections — **View** and **Format** — then calls the
+matching function from `src/bom/exportUtils.js`.
 
-- **JSON** — recursive tree structure (`number`, `type`, `fields`, optional `url`,
-  `children`). Downloaded as `.json`.
-- **CSV** — flat table: `#` (level number), `Type`, all visible columns, optional
-  URL column. Downloaded as `.csv`.
-- **HTML** — self-contained single file with inline CSS + ~50 lines of vanilla JS.
-  Level 1 expanded by default; roots collapse/expand their children. Key column
-  links to Orcanos. Downloaded as `.html`.
-- **PDF** — generates the same HTML in print mode (all rows visible, no JS
-  toggle, auto-calls `window.print()`) and opens it in a new tab. User saves
-  as PDF from the browser's print dialog.
+### View
+- **Hierarchic** (default) — full tree with level numbers, all depths.
+- **Summary** — groups all non-root nodes by part key (`User_Prefix` / `Key` /
+  `objName`), sums quantities across every occurrence, outputs one flat row per
+  unique part sorted by key. Files get a `-summary` suffix.
 
-Level numbers (`"1"`, `"1.2"`, `"1.2.3"`) are computed in `BomTree.jsx` by
-`computeLevelNumbers(nodes)` — a single O(n) pass over the flat loaded list.
-They appear as a dimmed prefix in the Tree cell and are included in all export
+### Format
+- **JSON** — hierarchic: recursive tree (`number`, `type`, `fields{}`, `children[]`).
+  Summary: flat array with `type`, `fields{}`, `Total Qty`. Downloaded as `.json`.
+- **CSV** — hierarchic: `#`, `Type`, all visible columns. Summary: `Type`, all
+  visible columns except Quantity, `Total Qty`. Downloaded as `.csv`.
+- **HTML** — hierarchic: self-contained file with inline CSS + vanilla JS
+  expand/collapse; level 1 expanded by default; Key column links to Orcanos.
+  Summary: simple flat table, no JS. Downloaded as `.html`.
+- **PDF** — same HTML in print mode (all rows visible, no JS toggle,
+  auto-calls `window.print()`) opened in a new tab.
+
+### Full-tree fetch
+Every export independently BFS-fetches the **entire** BOM subtree from Orcanos
+(`fetchFullSubtree` in `exportUtils.js`) regardless of what is expanded on screen.
+Concurrency 6, page size 500. After the BFS the node list is reordered to DFS
+so each parent is immediately followed by its descendants in the output.
+
+### Level numbers
+`"1"`, `"1.2"`, `"1.2.3"` — same logic as `computeLevelNumbers` in `BomTree.jsx`.
+Root rows show no number. Appear in the tree cell and in all hierarchic export
 formats.
 
 ---

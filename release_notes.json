@@ -1,209 +1,211 @@
 [
   {
+    "version": "1.0.4",
+    "date": "2026-05-01",
+    "changes": [
+      "✨ **Release notes: bold labels** — change titles now render in bold; **text** is parsed client-side so asterisks no longer show as literal characters.",
+      "✨ **Release notes: icon legend** — footer shows ✨ New · 🐛 Fix · 🔄 Update · ⚡ Performance · 🗑️ Removed so the icons are self-explanatory."
+    ]
+  },
+  {
     "version": "1.0.3",
     "date": "2026-05-01",
     "changes": [
-      "Export: added Summary view option. Groups all children by part key, sums quantities across all occurrences, and outputs one line per unique part. Available in all four formats (JSON, CSV, HTML, PDF). Hierarchic view (full tree) remains the default."
+      "✨ **Summary export** — new View option in the Export modal. Fetches the full BOM, groups all children by part key, sums quantities across every occurrence, and outputs one line per unique part. Works for JSON, CSV, HTML, and PDF; files get a -summary suffix."
     ]
   },
   {
     "version": "1.0.2",
     "date": "2026-05-01",
     "changes": [
-      "Revert: removed background probe on initial load. Icons and chevrons are now determined on expand (probe-on-expand), same as before 0.5.4. The background probe caused display issues on the main screen."
+      "🗑️ **Background probe removed** — reverted the initial-load background probe (added in 0.5.4). Icons and chevrons are now determined on expand (probe-on-expand), same as before 0.5.4. The background probe caused display issues on the main screen."
     ]
   },
   {
     "version": "1.0.1",
     "date": "2026-05-01",
     "changes": [
-      "Fix: export level numbers now appear in the correct tree order. The BFS fetch returned nodes breadth-first (all siblings before any grandchildren), so 4.13.1/4.13.2 etc. rendered after all 4.x rows. Nodes are now reordered to DFS before building the export, so each parent is immediately followed by its descendants."
+      "🐛 **Export node order** — BFS fetch returned all siblings before any grandchildren, so 4.13.1/4.13.2 appeared after all 4.x rows. Nodes are now reordered to DFS so each parent is immediately followed by its descendants in all export formats."
     ]
   },
   {
     "version": "1.0.0",
     "date": "2026-05-01",
     "changes": [
-      "Fix: Export now fetches the entire BOM tree from Orcanos regardless of what is expanded on screen. Previously only loaded/visible nodes were exported. Now each export format independently BFS-fetches all children (concurrency 6, page size 500) before generating the file."
+      "🐛 **Export full tree** — export was only outputting loaded/visible nodes. Each format now independently BFS-fetches the entire BOM subtree from Orcanos (concurrency 6, page size 500) regardless of what is expanded on screen.",
+      "🔄 **Where Used state preserved** — main BomTree stays mounted (hidden) while Where Used is active; pagination, search, expanded subtrees and child cache survive a round-trip and are restored instantly on Back.",
+      "🔄 **Locate: level-order BFS** — Locate now fully expands each level before scanning, stops on first match, and works even when the tree is already expanded (reads live nodes from nodesRef instead of dispatching a no-op).",
+      "🐛 **Locate highlight persistent** — amber highlight now stays until the next Locate or Back; fixed CSS specificity with !important so nth-child(even) and :hover don't override it.",
+      "✨ **Level numbers** — each BOM's direct children show 1, 2, 3; grandchildren show 1.1, 1.2, etc. Root rows show no number. Appears in the tree cell and in all export formats.",
+      "✨ **Background probe** — top-level BOMs are probed on load (concurrency 6) so chevrons and icons appear without requiring a click. (Reverted in 1.0.2.)",
+      "✨ **Export modal** — ⋯ menu on BOM rows opens an Export modal; pick JSON, CSV, HTML (interactive), or PDF."
     ]
   },
   {
     "version": "0.5.6",
     "date": "2026-05-01",
     "changes": [
-      "Fix: Where Used → Locate now highlights correctly when the BOM tree is already expanded. Previously, CHILD_LOAD_OK was a no-op for already-expanded nodes, causing freshly-generated nodeKeys to not match any DOM element. Now Locate reads already-expanded children directly from the live node list (real DOM keys) and only fetches+dispatches for nodes that aren't yet expanded."
+      "🐛 **Locate on expanded tree** — Locate now highlights correctly when the BOM tree is already expanded. Previously CHILD_LOAD_OK was a no-op for already-expanded nodes; now Locate reads children directly from the live node list."
     ]
   },
   {
     "version": "0.5.5",
     "date": "2026-05-01",
     "changes": [
-      "Fix: export level numbers now match the screen — root BOM row shows no number; direct children are 1, 2, 3; grandchildren are 1.1, 1.2, etc. Applied to JSON, CSV, and HTML/PDF exports."
+      "🐛 **Export level numbers** — root BOM row now shows no number; direct children are 1, 2, 3; grandchildren are 1.1, 1.2, etc. Applied to JSON, CSV, and HTML/PDF exports."
     ]
   },
   {
     "version": "0.5.4",
     "date": "2026-05-01",
     "changes": [
-      "Performance: top-level BOMs now render immediately on load, then background-probe each root (concurrency 6) to determine if it has children. Chevrons and Assembly/Part icons update in-place as probes complete — no click required. Probe results land in the existing probeRowsCache so the first expand of any root is instant. Stale probe results (page changed mid-flight) are silently discarded."
+      "⚡ **Background probe on load** — top-level BOMs render immediately, then each root is probed (concurrency 6) to determine if it has children. Chevrons and icons update in-place as probes complete."
     ]
   },
   {
     "version": "0.5.3",
     "date": "2026-05-01",
     "changes": [
-      "Level numbers: each BOM's direct children now restart at 1, 2, 3 (not 1.1, 1.2 chained off the root). Children of children are 1.1, 1.2, 2.1, etc. relative to their own parent."
+      "🔄 **Level number restart** — each BOM's direct children now restart at 1, 2, 3 instead of chaining off the root's number. Grandchildren are 1.1, 1.2, 2.1, etc. relative to their own parent."
     ]
   },
   {
     "version": "0.5.2",
     "date": "2026-05-01",
     "changes": [
-      "Level numbers: no longer shown on root (BOM) rows — only children display their hierarchical position (1.1, 1.1.1, etc.)."
+      "🔄 **Level numbers: hide root** — level numbers no longer shown on root (BOM) rows; only children display their hierarchical position."
     ]
   },
   {
     "version": "0.5.1",
     "date": "2026-05-01",
     "changes": [
-      "Export: removed the 'Include Orcanos URL column' option. The Key column is already a hyperlink in HTML/PDF exports; a separate URL column is redundant. JSON and CSV no longer include a URL field either."
+      "🗑️ **URL column removed from export** — the Key column is already a hyperlink in HTML/PDF exports; a separate URL column is redundant. JSON and CSV no longer include a URL field."
     ]
   },
   {
     "version": "0.5.0",
     "date": "2026-05-01",
     "changes": [
-      "Level numbers: every tree row now shows its hierarchical position (1, 1.1, 1.1.1, …) as a dimmed prefix before the chevron. Computed in one O(n) pass over the flat loaded list; stable regardless of expand/collapse state.",
-      "⋯ action menu on BOM rows: small dropdown button in the Tree cell (extensible for future actions). Currently contains one item: Export.",
-      "Export modal: pick JSON, CSV, HTML (interactive), or PDF; optionally include an Orcanos URL column.",
-      "JSON export: recursive tree structure with number, type, fields{}, optional url, and children[].",
-      "CSV export: flat table — # (level number), Type, all visible columns, optional URL column.",
-      "HTML export: self-contained single file with inline CSS + vanilla JS expand/collapse. Level 1 expanded by default. Key column links to Orcanos.",
-      "PDF export: same HTML in print mode (all rows visible) opened in a new tab; browser's print dialog handles PDF conversion."
+      "✨ **Level numbers in tree** — every tree row shows its hierarchical position (1, 1.1, 1.1.1, …) as a dimmed prefix before the chevron.",
+      "✨ **⋯ action menu** — small dropdown on BOM rows in the Tree cell; currently contains Export only.",
+      "✨ **Export: JSON** — recursive tree structure with number, type, fields{}, and children[].",
+      "✨ **Export: CSV** — flat table with # (level number), Type, and all visible columns.",
+      "✨ **Export: HTML** — self-contained file with inline CSS + vanilla JS expand/collapse; level 1 expanded by default; Key column links to Orcanos.",
+      "✨ **Export: PDF** — same HTML in print mode opened in a new tab; browser print dialog handles PDF conversion."
     ]
   },
   {
     "version": "0.4.7",
     "date": "2026-05-01",
     "changes": [
-      "Fix: Locate highlight now actually persists. The static `.bom-row--located` rule was being overridden by `tr:nth-child(even)` and `tr:hover` (both higher specificity), so the amber background only showed during the 1s intro animation and then vanished. Made the static rule `!important` (same pattern as `.bom-row--errored`)."
+      "🐛 **Locate highlight visible** — `.bom-row--located` was being overridden by `tr:nth-child(even)` and `tr:hover` (higher specificity), so the amber background vanished after the 1s animation. Fixed with `!important`."
     ]
   },
   {
     "version": "0.4.6",
     "date": "2026-05-01",
     "changes": [
-      "Where Used → Back now preserves the previous BOMs / Part Catalog state. The main tree stays mounted (just hidden) while Where Used is active, so pagination, search, expanded subtrees and the child cache survive a round-trip and are restored instantly on Back.",
-      "Where Used → Locate is now a true level-order BFS: fully expand the current level, scan for the target, stop on first match, otherwise descend. Replaces the previous cheap `CS21 = '<value>'` per-level filter; the level is now visible to the user as it's being walked.",
-      "Locate match predicate: descendant.cs21Raw === target OR descendant.cs21Int === target. The `target` is the same value passed to `dbo.fn_GetRootParentByCS21()` (PRT click → itemId, PI click → cs21Raw).",
-      "Locate highlight is now persistent: brief amber flash on arrival, then settles to a steady highlight that stays until the next Locate overwrites it or Where Used is exited.",
-      "Removed unused `cs21Equals` parameter from `fetchChildren` (was only used by the previous Locate strategy)."
+      "🔄 **Where Used: state preserved on Back** — main tree stays mounted (hidden) while Where Used is active; all state restored instantly on Back.",
+      "🔄 **Locate: true level-order BFS** — fully expands the current level before scanning; stops on first match.",
+      "🔄 **Locate: persistent highlight** — amber flash settles to a steady highlight that stays until the next Locate or Back.",
+      "🗑️ **Removed cs21Equals param** — unused `cs21Equals` parameter removed from `fetchChildren`."
     ]
   },
   {
     "version": "0.4.5",
     "date": "2026-05-01",
     "changes": [
-      "Where Used → Locate is now incremental: BFS-expands the BOM level by level and stops the moment the target is found, instead of walking the entire subtree.",
-      "At each level the children fetch uses `Filter_By: parent_original_id = X AND CS21 = '<value>'` (the same value passed to fn_GetRootParentByCS21). A non-empty result is the match — no client-side scan needed. If empty, the level is fetched normally so the BFS can recurse into Assembly children.",
-      "Added optional `cs21Equals` parameter to `fetchChildren` and a new `findAndExpand(rootNode, { cs21Filter })` method on `useBomChildren`."
+      "🔄 **Locate: incremental BFS** — expands the BOM level by level and stops the moment the target is found, instead of walking the entire subtree.",
+      "✨ **cs21Equals filter** — added optional `cs21Equals` parameter to `fetchChildren` and `findAndExpand` for per-level server-side filtering."
     ]
   },
   {
     "version": "0.4.4",
     "date": "2026-05-01",
     "changes": [
-      "Where Used SQL value differs by row type: a Part Instance now passes its **raw CS21 value** to `dbo.fn_GetRootParentByCS21(...)` (instead of the extracted integer). Parts still pass their own id. Added `row.cs21Raw` to the row normalizer for this."
+      "🐛 **Where Used SQL arg for PI** — Part Instances now pass their raw CS21 value to `fn_GetRootParentByCS21` instead of the extracted integer. Added `row.cs21Raw` to the row normalizer."
     ]
   },
   {
     "version": "0.4.3",
     "date": "2026-05-01",
     "changes": [
-      "Where Used → Locate matching is now id-based: a descendant matches when its CS21 integer equals the target. Target is computed by row type: for a Part (PRT) it's the part's own id; for a Part Instance (PI) it's the PI's CS21 integer (source PRT's id).",
-      "Each row exposes a new `cs21Int` field — first run of digits from CS21 / Master Part Source. Empty for PRTs (no CS21 column)."
+      "🔄 **Locate: id-based matching** — descendant matches when its CS21 integer equals the target (PRT → part's own id; PI → CS21 integer from Master Part Source).",
+      "✨ **cs21Int field** — each row now exposes `cs21Int`, the first run of digits from CS21 / Master Part Source."
     ]
   },
   {
     "version": "0.4.2",
     "date": "2026-05-01",
     "changes": [
-      "Where Used → Locate now matches the descendant whose **CS21** (Master Part Source) value equals the where-used item's CS21. That's the canonical 'same part instance' check — replaces the previous Key-similarity heuristic."
+      "🔄 **Locate: CS21 matching** — Locate now matches the descendant whose CS21 (Master Part Source) value equals the where-used item's CS21, replacing the previous Key-similarity heuristic."
     ]
   },
   {
     "version": "0.4.1",
     "date": "2026-05-01",
     "changes": [
-      "Where Used → Locate now matches descendants by **Key** (User_Prefix) similarity rather than originalId. A descendant matches when its Key equals the target Key, or when one is a prefix of the other — covers Orcanos PI-key conventions where a Part Instance's Key is derived from its source PRT's Key."
+      "🔄 **Locate: Key matching** — Locate now matches descendants by Key (User_Prefix) similarity instead of originalId."
     ]
   },
   {
     "version": "0.4.0",
     "date": "2026-05-01",
     "changes": [
-      "Where Used: every non-BOM row now has a magnifier icon next to the item icon. Click it to swap the tree to the BOMs that contain that part (filter 609 + `Filter_By: ID IN (select * from dbo.fn_GetRootParentByCS21('<id>'))`).",
-      "Where-Used view reuses the main BomTree — pagination, search, expand-all, probe-on-expand, Key→Orcanos hyperlink all work as in the regular view.",
-      "Each BOM in the Where-Used result has a Locate (crosshair) button. Click it to expand the BOM and scroll/flash-highlight the descendant matching the original part.",
-      "Back banner at the top of the where-used view returns to the previous view. Switching sidebar (BOMs / Part Catalog) also exits Where-Used.",
-      "Empty state in Where-Used reads 'This item is not used in any BOM.'"
+      "✨ **Where Used** — magnifier icon on every non-BOM row swaps the tree to BOMs containing that part (`fn_GetRootParentByCS21`).",
+      "✨ **Locate** — each Where-Used BOM has a crosshair button that expands the BOM and scroll/flash-highlights the matching descendant.",
+      "✨ **Where Used: Back banner** — returns to the previous view; switching sidebar also exits Where Used.",
+      "✨ **Where Used: empty state** — shows 'This item is not used in any BOM' when no results."
     ]
   },
   {
     "version": "0.3.3",
     "date": "2026-04-30",
     "changes": [
-      "Orcanos record link moved onto the Key column itself — the Key is now a purple hyperlink that opens the matching PRT/PI in Orcanos. Removed the separate 'Orcanos Link' column."
+      "🔄 **Key column is Orcanos link** — the Key value is now a purple hyperlink opening the matching PRT/PI in Orcanos. Removed the separate Orcanos Link column."
     ]
   },
   {
     "version": "0.3.2",
     "date": "2026-04-29",
     "changes": [
-      "Server-side search: typing in the search box now hits Orcanos with `Filter_By: [Obj_name] LIKE '%query%'` so matches across all pages are returned (BOMs and Part Catalog).",
-      "Page size is configurable: edit `<pageSize>` in `public/settings.xml` (default 50, clamped 1..500). Shown in the Settings modal.",
-      "BOM name prefixes for the Part Catalog are configurable: `<bomNamePrefixes>50,51,52,53</bomNamePrefixes>` in settings.xml. Items whose Obj_name starts with any prefix render the BOM icon.",
-      "Probe-on-expand brought back (only when you click `>`, never on initial page load). Each click fetches the row's children + probes one level deeper so leaves render without a chevron. Probe results cached by `parent_original_id` so the next click on a probed child is instant.",
-      "Initial page load and pagination are now single-fetch (no upfront probing) — no multi-second wait when switching pages or views."
+      "✨ **Server-side search** — search box hits Orcanos with `[Obj_name] LIKE '%query%'` so matches across all pages are returned.",
+      "🔄 **Configurable page size** — `<pageSize>` in settings.xml (default 50, clamped 1–500), shown in the Settings modal.",
+      "🔄 **Configurable BOM prefixes** — `<bomNamePrefixes>` in settings.xml controls which Part Catalog rows get the BOM icon.",
+      "🔄 **Probe-on-expand restored** — probing runs only when the user clicks `>`; initial page load is a single fetch with no upfront probing."
     ]
   },
   {
     "version": "0.3.1",
     "date": "2026-04-29",
     "changes": [
-      "Sidebar: Settings and Release Notes moved into a popup menu that opens on the username at the bottom. Main nav now contains only BOMs and Part Catalog.",
-      "Popup closes on click-outside or Esc."
+      "🔄 **Sidebar: Settings moved to popup** — Settings and Release Notes moved into a popup menu on the username at the bottom; main nav now contains only BOMs and Part Catalog."
     ]
   },
   {
     "version": "0.3.0",
     "date": "2026-04-29",
     "changes": [
-      "Pagination on the BOMs main page — Page_Size 100, First/Prev/Next/Last buttons, status bar shows `BOMs N–M of K · page X/Y`.",
-      "API: send `IsNewPaging: 0` + `IsReturnPageCount: \"yes\"` for the top-level fetch — the only combo that returns rows AND a truthful Total_records (verified via console matrix sweep).",
-      "New 'Part Catalog' view in the sidebar — same UI as BOMs, calls filter 611. Reuses BomTree, hook, and probe cache (no duplicate code).",
-      "Probe cache: when expanding a row we already fetched the children's children — store them by `parent_original_id` so the next expand is instant. Recursive: works for any depth.",
-      "Status bar pinned at the bottom of the view — only the table area scrolls.",
-      "Settings: added `partCatalogFilterId` (default 611) to `public/settings.xml` and the read-only Settings modal.",
-      "Fix: Refresh and Retry buttons no longer pass the React click event into the request body (was triggering a circular-JSON crash). Added a numeric guard in `loadTop`.",
-      "Fix: 'Quantity' restored as a synthetic column after the column-hiding pass in 0.2.0."
+      "✨ **Pagination** — First/Prev/Next/Last buttons on the BOMs main page; status bar shows BOMs N–M of K · page X/Y.",
+      "✨ **Part Catalog view** — new sidebar entry calling filter 611; reuses BomTree, hook, and probe cache.",
+      "⚡ **Probe cache** — children's children cached by `parent_original_id` on expand so the next click is instant.",
+      "🐛 **Refresh/Retry crash** — buttons no longer pass the React click event into the request body (circular-JSON crash). Added numeric guard in `loadTop`.",
+      "🐛 **Quantity column restored** — Quantity was accidentally hidden in 0.2.0; restored as a synthetic column."
     ]
   },
   {
     "version": "0.2.0",
     "date": "2026-04-29",
     "changes": [
-      "API: send IsReturnPageCount=0 — filters 609/610 returned empty Data with 1.",
-      "API: children filter now uses `parent_original_id = <id>` (replaced `[Master Part Source] = '<name>'`); IsNewPaging=0.",
-      "API: extract `original_id` from a PI's Master Part Source value (e.g. `PRT-39382-901631 ...` → `39382`).",
-      "API: row lookup falls back from byName to byTitle and reads value from Display_text/Display/Text/Value (Display_text preferred so picklists like Status render their label, not the internal id).",
-      "UX: probe each child for grandchildren on expand — leaves render with no chevron, assemblies keep one. Concurrency cap 6, Page_Size 1.",
-      "UX: hide Copy As Link, In Pool, Is Branch, Original ID, ID, Quantity, Master Part Source columns (data still on row, just not rendered).",
-      "UX: merge Revision (PRT) and Part Revision (PI) into a single Revision column.",
-      "UX: removed cell hover-expand that caused row reflow; native title tooltip replaces it.",
-      "Design: new SVG icons — BOM (hierarchy tree, purple), Assembly (gear, orange), Part (hex nut, gray).",
-      "Design: added missing --accent-orange (#F5A623) token to design-system.css.",
-      "Config: settings.xml filter IDs updated to 609 (BOMs) / 610 (instances)."
+      "🔄 **API: IsReturnPageCount=0** — filters 609/610 returned empty Data with 1 otherwise.",
+      "🔄 **API: parent_original_id filter** — children filter now uses `parent_original_id = <id>` instead of `[Master Part Source] = '<name>'`.",
+      "🔄 **API: original_id extraction** — extracts `original_id` from a PI's Master Part Source value (e.g. `PRT-39382-…` → `39382`).",
+      "🔄 **API: Display_text preferred** — row lookup falls back from byName to byTitle and prefers Display_text so picklists render their label.",
+      "⚡ **Probe on expand** — probes each child for grandchildren on expand; leaves render with no chevron. Concurrency 6.",
+      "🔄 **Hidden columns** — hides Copy As Link, In Pool, Is Branch, Original ID, ID, Quantity, Master Part Source.",
+      "🔄 **Revision column merged** — PRT Revision and PI Part Revision merged into a single synthetic Revision column.",
+      "✨ **New icons** — BOM (purple hierarchy tree), Assembly (orange gear), Part (gray hex nut)."
     ]
   }
 ]

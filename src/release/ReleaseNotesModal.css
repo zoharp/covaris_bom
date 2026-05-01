@@ -125,9 +125,22 @@
 
 .release-footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 14px 22px;
+  padding: 12px 22px;
   border-top: 1px solid var(--border-color);
   background: var(--bg-secondary);
+}
+
+.release-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.release-legend-item {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }

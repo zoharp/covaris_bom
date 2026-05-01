@@ -3,6 +3,11 @@ import notes from '../../release_notes.json';
 import pkg from '../../package.json';
 import './ReleaseNotesModal.css';
 
+function renderChange(text) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p);
+}
+
 export default function ReleaseNotesModal({ onClose }) {
   useEffect(() => {
     function onKey(e) {
@@ -45,7 +50,7 @@ export default function ReleaseNotesModal({ onClose }) {
               </div>
               <ul className="release-entry-changes">
                 {entry.changes.map((c, i) => (
-                  <li key={i}>{c}</li>
+                  <li key={i}>{renderChange(c)}</li>
                 ))}
               </ul>
             </div>
@@ -53,6 +58,19 @@ export default function ReleaseNotesModal({ onClose }) {
         </div>
 
         <div className="release-footer">
+          <div className="release-legend">
+            {[
+              ['✨', 'New'],
+              ['🐛', 'Fix'],
+              ['🔄', 'Update'],
+              ['⚡', 'Performance'],
+              ['🗑️', 'Removed'],
+            ].map(([icon, label]) => (
+              <span key={label} className="release-legend-item">
+                {icon} {label}
+              </span>
+            ))}
+          </div>
           <button type="button" className="btn-secondary" onClick={onClose}>
             Close
           </button>
