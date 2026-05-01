@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.1.0",
+    "date": "2026-05-01",
+    "changes": [
+      "✨ **Related ECOs** — ⋯ menu on any row now includes \"Related ECOs\"; opens a popup table of ECOs that reference the part (filter 612, Item_Type CR).",
+      "🐛 **Where Used PI arg** — PI rows now send the numeric cs21Int to fn_GetRootParentByCS21 instead of the full Display_text label."
+    ]
+  },
+  {
     "version": "1.0.4",
     "date": "2026-05-01",
     "changes": [

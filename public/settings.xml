@@ -18,8 +18,10 @@
     versionId         Orcanos Version ID (used in filter calls and
                       in the "Orcanos Link" URL).
     bomFilterId       Filter ID for top-level BOMs (Item_Type=PRT).
-    instanceFilterId  Filter ID for child Part Instances
-                      (Item_Type=PI).
+    instanceFilterId    Filter ID for child Part Instances
+                        (Item_Type=PI).
+    relatedEcoFilterId  Filter ID for Related ECOs popup
+                        (Item_Type=CR).
 -->
 <covarisBomSettings>
   <baseUrl>https://us.orcanos.com/covaris/</baseUrl>
@@ -27,6 +29,7 @@
   <bomFilterId>609</bomFilterId>
   <instanceFilterId>610</instanceFilterId>
   <partCatalogFilterId>611</partCatalogFilterId>
+  <relatedEcoFilterId>612</relatedEcoFilterId>
   <pageSize>50</pageSize>
   <!--
     Comma-separated list of name/ID prefixes that mark an item as a BOM

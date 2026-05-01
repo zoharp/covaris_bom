@@ -202,6 +202,31 @@ export function whereUsedFilterBy(id) {
 }
 
 /**
+ * Fetch the ECOs (Change Requests) that reference a given part or part instance.
+ *
+ * Filter_By differs by row type:
+ *   PRT → ID in (select item_id from eco_items where item_id=<row.itemId>)
+ *   PI  → ID in (select item_id from eco_items where item_id=<row.cs21Int>)
+ *
+ * The Key column URL uses type 'CR'.
+ */
+export async function fetchRelatedEcos({ row }) {
+  const { relatedEcoFilterId, versionId } = getSettings();
+  const id = row.type === 'PI' ? row.cs21Int : row.itemId;
+  const body = {
+    Filter_id: relatedEcoFilterId,
+    Page_no: 1,
+    Page_Size: 200,
+    Item_Type: 'CR',
+    Version_id: versionId,
+    Filter_By: `ID in (select item_id from eco_items where item_id=${id})`,
+    IsNewPaging: 0,
+    IsReturnPageCount: 0,
+  };
+  return await _fetchFilter(body);
+}
+
+/**
  * Fetch the children of a BOM/Assembly given the parent's original ID.
  *
  *   { rows, total }   on success

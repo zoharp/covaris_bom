@@ -534,6 +534,44 @@
   color: var(--text-primary);
 }
 
+/* ─── Related ECOs modal ────────────────────────────────────── */
+
+.eco-modal {
+  max-width: min(900px, 92vw);
+  width: 92vw;
+}
+
+.eco-modal-body {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.eco-modal-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 24px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.eco-modal-error {
+  color: #c0392b;
+}
+
+.eco-modal-table-wrap {
+  overflow: auto;
+  flex: 1;
+}
+
+.eco-modal-table {
+  min-width: 100%;
+}
+
 /* ─── Spinner ring (used by Spinner.jsx) ────────────────────── */
 
 .spinner-ring {

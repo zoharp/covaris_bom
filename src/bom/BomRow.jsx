@@ -34,6 +34,8 @@ export default function BomRow({
   levelNum = '',
   // Called with the node when the user picks Export from the ⋯ menu.
   onExport,
+  // Called with the node when the user picks Related ECOs from the ⋯ menu.
+  onRelatedEcos,
 }) {
   // Local open/close state for the ⋯ action menu.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -142,8 +144,8 @@ export default function BomRow({
     );
   }
 
-  // ⋯ menu is only shown on BOM rows (root in BOMs view, or BOM-by-name in Parts).
-  const showMenu = isBom && !!onExport;
+  // ⋯ menu: Export only on BOM rows; Related ECOs on any row.
+  const showMenu = (isBom && !!onExport) || !!onRelatedEcos;
 
   return (
     <tr
@@ -239,16 +241,24 @@ export default function BomRow({
               </button>
               {menuOpen && (
                 <div className="bom-row-menu" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    className="bom-row-menu-item"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onExport(node);
-                    }}
-                  >
-                    Export
-                  </button>
+                  {isBom && onExport && (
+                    <button
+                      type="button"
+                      className="bom-row-menu-item"
+                      onClick={() => { setMenuOpen(false); onExport(node); }}
+                    >
+                      Export
+                    </button>
+                  )}
+                  {onRelatedEcos && (
+                    <button
+                      type="button"
+                      className="bom-row-menu-item"
+                      onClick={() => { setMenuOpen(false); onRelatedEcos(node); }}
+                    >
+                      Related ECOs
+                    </button>
+                  )}
                 </div>
               )}
             </div>

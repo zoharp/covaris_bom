@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useBomChildren } from './useBomChildren';
 import BomRow from './BomRow';
 import ExportModal from './ExportModal';
+import EcoModal from './EcoModal';
 import Spinner from '../ui/Spinner';
 import { useToast } from '../ui/Toast';
 import './BomTree.css';
@@ -105,6 +106,8 @@ export default function BomTree({
 
   // Export modal — set to the BOM root node when open, null otherwise.
   const [exportNode, setExportNode] = useState(null);
+  // Related ECOs modal — set to the node whose ECOs to display, null otherwise.
+  const [ecoNode, setEcoNode] = useState(null);
 
   const { showToast } = useToast();
 
@@ -367,6 +370,7 @@ export default function BomTree({
                     located={locatedKey === node.nodeKey}
                     levelNum={levelNumbers.get(node.nodeKey) || ''}
                     onExport={setExportNode}
+                    onRelatedEcos={setEcoNode}
                   />
                 ))}
               </tbody>
@@ -446,6 +450,13 @@ export default function BomTree({
           rootNode={exportNode}
           columns={columns || []}
           onClose={() => setExportNode(null)}
+        />
+      )}
+      {ecoNode && (
+        <EcoModal
+          row={ecoNode.row}
+          onClose={() => setEcoNode(null)}
+          onAuthExpired={onAuthExpired}
         />
       )}
     </div>

@@ -8,6 +8,7 @@ const FALLBACK = {
   bomFilterId: 609,
   instanceFilterId: 610,
   partCatalogFilterId: 611,
+  relatedEcoFilterId: 612,
   pageSize: 50,
   bomNamePrefixes: ['50', '51', '52', '53'],
 };
@@ -52,6 +53,7 @@ function parseXml(xmlText) {
     bomFilterId: getInt('bomFilterId', FALLBACK.bomFilterId),
     instanceFilterId: getInt('instanceFilterId', FALLBACK.instanceFilterId),
     partCatalogFilterId: getInt('partCatalogFilterId', FALLBACK.partCatalogFilterId),
+    relatedEcoFilterId: getInt('relatedEcoFilterId', FALLBACK.relatedEcoFilterId),
     pageSize,
     bomNamePrefixes,
   };
