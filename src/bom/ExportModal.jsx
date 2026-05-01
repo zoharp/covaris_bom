@@ -17,12 +17,18 @@ export default function ExportModal({ rootNode, columns, onClose }) {
   const [format, setFormat] = useState('html');
   const [view, setView] = useState('hierarchic');
   const [exporting, setExporting] = useState(false);
+  const [progress, setProgress] = useState(null);
 
   async function handleExport() {
     const bomName = rootNode.row.objName || rootNode.row.userPrefix || 'BOM';
     setExporting(true);
+    setProgress(null);
     try {
-      const opts = { bomName, summary: view === 'summary' };
+      const opts = {
+        bomName,
+        summary: view === 'summary',
+        onProgress: (done, total) => setProgress({ done, total }),
+      };
       if (format === 'json') await exportJson(rootNode.row, columns, opts);
       else if (format === 'csv') await exportCsv(rootNode.row, columns, opts);
       else if (format === 'html') await exportHtml(rootNode.row, columns, opts);
@@ -30,6 +36,7 @@ export default function ExportModal({ rootNode, columns, onClose }) {
       onClose();
     } finally {
       setExporting(false);
+      setProgress(null);
     }
   }
 
@@ -84,9 +91,16 @@ export default function ExportModal({ rootNode, columns, onClose }) {
         </div>
 
         <div className="modal-footer">
+          {exporting && (
+            <span className="export-progress-label">
+              {progress
+                ? `Fetching… ${progress.done} / ${progress.total}`
+                : 'Fetching…'}
+            </span>
+          )}
           <button className="btn-secondary" onClick={onClose} disabled={exporting}>Cancel</button>
           <button className="btn-primary" onClick={handleExport} disabled={exporting}>
-            {exporting ? 'Fetching…' : 'Export'}
+            Export
           </button>
         </div>
       </div>

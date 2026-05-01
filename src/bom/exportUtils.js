@@ -25,7 +25,12 @@ async function mapWithLimit(items, limit, fn) {
 // BFS from rootRow, fetching children independently of the UI tree state.
 // Returns a flat array in BFS order — parents always precede their children,
 // which is the requirement for computeLevelNums below.
-async function fetchFullSubtree(rootRow) {
+//
+// onProgress(done, total) is called after each item is fetched:
+//   done  — items whose children have been fetched so far
+//   total — all items discovered so far (grows as children arrive)
+// Both converge to the full tree size when the BFS completes.
+async function fetchFullSubtree(rootRow, onProgress) {
   let seq = 0;
   const makeId = () => `x${++seq}`;
   const rootId = makeId();
@@ -33,16 +38,29 @@ async function fetchFullSubtree(rootRow) {
   const nodes = [{ nodeKey: rootId, parentKey: null, depth: 0, isRoot: true, row: rootRow }];
   let frontier = [{ nodeKey: rootId, row: rootRow, depth: 0 }];
 
+  let done = 0;
+  let total = 1; // root is the first item to process
+  onProgress?.(done, total);
+
   while (frontier.length > 0) {
     const levelResults = await mapWithLimit(frontier, EXPORT_CONCURRENCY, async (item) => {
-      if (!item.row.originalId) return { parentKey: item.nodeKey, children: [], depth: item.depth + 1 };
+      if (!item.row.originalId) {
+        done++;
+        onProgress?.(done, total);
+        return { parentKey: item.nodeKey, children: [], depth: item.depth + 1 };
+      }
       try {
         const res = await fetchChildren({
           parentOriginalId: item.row.originalId,
           pageSize: EXPORT_PAGE_SIZE,
         });
+        done++;
+        total += res.rows.length; // each child will also be processed
+        onProgress?.(done, total);
         return { parentKey: item.nodeKey, children: res.rows, depth: item.depth + 1 };
       } catch {
+        done++;
+        onProgress?.(done, total);
         return { parentKey: item.nodeKey, children: [], depth: item.depth + 1 };
       }
     });
@@ -197,8 +215,8 @@ function fmtQty(q) {
 
 // ─── JSON export ───────────────────────────────────────────────────────────
 
-export async function exportJson(rootRow, columns, { bomName, summary = false }) {
-  const nodes = await fetchFullSubtree(rootRow);
+export async function exportJson(rootRow, columns, { bomName, summary = false, onProgress } = {}) {
+  const nodes = await fetchFullSubtree(rootRow, onProgress);
 
   if (summary) {
     const entries = buildSummary(nodes);
@@ -248,8 +266,8 @@ export async function exportJson(rootRow, columns, { bomName, summary = false })
 
 // ─── CSV export ────────────────────────────────────────────────────────────
 
-export async function exportCsv(rootRow, columns, { bomName, summary = false }) {
-  const nodes = await fetchFullSubtree(rootRow);
+export async function exportCsv(rootRow, columns, { bomName, summary = false, onProgress } = {}) {
+  const nodes = await fetchFullSubtree(rootRow, onProgress);
 
   if (summary) {
     const entries = buildSummary(nodes);
@@ -291,8 +309,8 @@ export async function exportCsv(rootRow, columns, { bomName, summary = false }) 
 
 // ─── HTML export (interactive) ─────────────────────────────────────────────
 
-export async function exportHtml(rootRow, columns, { bomName, summary = false }) {
-  const nodes = await fetchFullSubtree(rootRow);
+export async function exportHtml(rootRow, columns, { bomName, summary = false, onProgress } = {}) {
+  const nodes = await fetchFullSubtree(rootRow, onProgress);
   const html = summary
     ? _generateSummaryHtml(buildSummary(nodes), columns, { bomName, printMode: false })
     : _generateHtml(nodes, columns, computeLevelNums(nodes), { bomName, printMode: false });
@@ -301,8 +319,8 @@ export async function exportHtml(rootRow, columns, { bomName, summary = false })
 
 // ─── PDF export (HTML → browser print dialog) ──────────────────────────────
 
-export async function exportPdf(rootRow, columns, { bomName, summary = false }) {
-  const nodes = await fetchFullSubtree(rootRow);
+export async function exportPdf(rootRow, columns, { bomName, summary = false, onProgress } = {}) {
+  const nodes = await fetchFullSubtree(rootRow, onProgress);
   const html = summary
     ? _generateSummaryHtml(buildSummary(nodes), columns, { bomName, printMode: true })
     : _generateHtml(nodes, columns, computeLevelNums(nodes), { bomName, printMode: true });
