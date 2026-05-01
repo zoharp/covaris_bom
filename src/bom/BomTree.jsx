@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBomChildren } from './useBomChildren';
 import BomRow from './BomRow';
 import ExportModal from './ExportModal';
@@ -89,6 +89,32 @@ export default function BomTree({
   // 350ms debounce — slightly longer than client-only filtering since each
   // change now triggers a server roundtrip.
   const debounced = useDebounced(search, 350);
+
+  // ─── Search history (per user, persisted in localStorage) ────
+  function historyKey() {
+    return `covaris_search_history_${localStorage.getItem('covaris_user') || ''}`;
+  }
+  const [searchHistory, setSearchHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(historyKey()) || '[]'); }
+    catch { return []; }
+  });
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Persist a new search string (deduped, capped at 10, newest first).
+  useEffect(() => {
+    const q = debounced.trim();
+    if (!q) return;
+    setSearchHistory((prev) => {
+      const next = [q, ...prev.filter((s) => s !== q)].slice(0, 10);
+      try { localStorage.setItem(historyKey(), JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [debounced]);
+
+  const applyHistory = useCallback((s) => {
+    setSearch(s);
+    setHistoryOpen(false);
+  }, []);
   const tree = useBomChildren({
     onAuthExpired,
     topFilterId,
@@ -291,6 +317,9 @@ export default function BomTree({
             placeholder={`Search loaded ${topLabel} by name…`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onFocus={() => setHistoryOpen(true)}
+            onBlur={() => setHistoryOpen(false)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setHistoryOpen(false); }}
           />
           {search && (
             <button
@@ -301,6 +330,22 @@ export default function BomTree({
             >
               ✕
             </button>
+          )}
+          {historyOpen && searchHistory.length > 0 && (
+            <div className="bom-search-history" role="listbox">
+              {searchHistory.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className="bom-search-history-item"
+                  role="option"
+                  onMouseDown={(e) => { e.preventDefault(); applyHistory(s); }}
+                >
+                  <span className="bom-search-history-icon">↩</span>
+                  {s}
+                </button>
+              ))}
+            </div>
           )}
         </div>
         <button
