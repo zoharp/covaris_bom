@@ -58,7 +58,26 @@ async function fetchFullSubtree(rootRow) {
     frontier = nextFrontier;
   }
 
-  return nodes;
+  // BFS gives breadth-first order; reorder to DFS so each parent is immediately
+  // followed by its descendants (required for visual tree and level numbering).
+  const childrenOf = new Map();
+  for (const n of nodes) {
+    const pk = n.parentKey ?? '';
+    if (!childrenOf.has(pk)) childrenOf.set(pk, []);
+    childrenOf.get(pk).push(n);
+  }
+  const dfs = [];
+  function visit(nodeKey) {
+    for (const child of (childrenOf.get(nodeKey) || [])) {
+      dfs.push(child);
+      visit(child.nodeKey);
+    }
+  }
+  for (const root of (childrenOf.get('') || [])) {
+    dfs.push(root);
+    visit(root.nodeKey);
+  }
+  return dfs;
 }
 
 // ─── Level numbers ─────────────────────────────────────────────────────────

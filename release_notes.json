@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.0.1",
+    "date": "2026-05-01",
+    "changes": [
+      "Fix: export level numbers now appear in the correct tree order. The BFS fetch returned nodes breadth-first (all siblings before any grandchildren), so 4.13.1/4.13.2 etc. rendered after all 4.x rows. Nodes are now reordered to DFS before building the export, so each parent is immediately followed by its descendants."
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-05-01",
     "changes": [
