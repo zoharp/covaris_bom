@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.0.3",
+    "date": "2026-05-01",
+    "changes": [
+      "Export: added Summary view option. Groups all children by part key, sums quantities across all occurrences, and outputs one line per unique part. Available in all four formats (JSON, CSV, HTML, PDF). Hierarchic view (full tree) remains the default."
+    ]
+  },
+  {
     "version": "1.0.2",
     "date": "2026-05-01",
     "changes": [

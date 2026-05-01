@@ -166,10 +166,57 @@ function levelNum(node, levelNumbers) {
   return node.isRoot ? '' : (levelNumbers.get(node.nodeKey) || '');
 }
 
+// ─── Summary builder ───────────────────────────────────────────────────────
+// Groups all non-root nodes by part key (User_Prefix / Key / objName), sums
+// quantities, and returns one entry per unique part sorted by key.
+function buildSummary(nodes) {
+  const map = new Map();
+  for (const n of nodes) {
+    if (n.isRoot) continue;
+    const partKey =
+      n.row.byName('User_Prefix') || n.row.byTitle('Key') || n.row.objName || n.nodeKey;
+    const qtyRaw = n.row.byName('Quantity') || n.row.byTitle('Quantity') || '';
+    const qty = parseFloat(qtyRaw) || 1;
+    if (map.has(partKey)) {
+      map.get(partKey).totalQty += qty;
+    } else {
+      map.set(partKey, { node: n, totalQty: qty });
+    }
+  }
+  return [...map.values()].sort((a, b) => {
+    const ka = a.node.row.byName('User_Prefix') || a.node.row.objName || '';
+    const kb = b.node.row.byName('User_Prefix') || b.node.row.objName || '';
+    return ka.localeCompare(kb);
+  });
+}
+
+function fmtQty(q) {
+  return q % 1 === 0 ? String(q) : q.toFixed(4).replace(/\.?0+$/, '');
+}
+
 // ─── JSON export ───────────────────────────────────────────────────────────
 
-export async function exportJson(rootRow, columns, { bomName }) {
+export async function exportJson(rootRow, columns, { bomName, summary = false }) {
   const nodes = await fetchFullSubtree(rootRow);
+
+  if (summary) {
+    const entries = buildSummary(nodes);
+    const nonQtyCols = columns.filter((c) => c.key !== '__quantity');
+    const data = {
+      bom: bomName,
+      exportedAt: new Date().toISOString().split('T')[0],
+      view: 'summary',
+      items: entries.map((e) => {
+        const fields = {};
+        for (const col of nonQtyCols) fields[col.title] = stripHtml(getFieldValue(e.node, col));
+        fields['Total Qty'] = e.totalQty;
+        return { type: e.node.row.type, fields };
+      }),
+    };
+    downloadFile(JSON.stringify(data, null, 2), `${sanitizeFilename(bomName)}-summary.json`, 'application/json');
+    return;
+  }
+
   const levelNumbers = computeLevelNums(nodes);
 
   const childrenOf = new Map();
@@ -199,8 +246,28 @@ export async function exportJson(rootRow, columns, { bomName }) {
 
 // ─── CSV export ────────────────────────────────────────────────────────────
 
-export async function exportCsv(rootRow, columns, { bomName }) {
+export async function exportCsv(rootRow, columns, { bomName, summary = false }) {
   const nodes = await fetchFullSubtree(rootRow);
+
+  if (summary) {
+    const entries = buildSummary(nodes);
+    const nonQtyCols = columns.filter((c) => c.key !== '__quantity');
+    const headers = ['Type', ...nonQtyCols.map((c) => c.title), 'Total Qty'];
+    const lines = [
+      headers.map(csvEscape).join(','),
+      ...entries.map((e) => {
+        const cells = [
+          e.node.row.type,
+          ...nonQtyCols.map((c) => stripHtml(getFieldValue(e.node, c))),
+          fmtQty(e.totalQty),
+        ];
+        return cells.map(csvEscape).join(',');
+      }),
+    ];
+    downloadFile(lines.join('\r\n'), `${sanitizeFilename(bomName)}-summary.csv`, 'text/csv;charset=utf-8');
+    return;
+  }
+
   const levelNumbers = computeLevelNums(nodes);
 
   const headers = ['#', 'Type', ...columns.map((c) => c.title)];
@@ -221,19 +288,21 @@ export async function exportCsv(rootRow, columns, { bomName }) {
 
 // ─── HTML export (interactive) ─────────────────────────────────────────────
 
-export async function exportHtml(rootRow, columns, { bomName }) {
+export async function exportHtml(rootRow, columns, { bomName, summary = false }) {
   const nodes = await fetchFullSubtree(rootRow);
-  const levelNumbers = computeLevelNums(nodes);
-  const html = _generateHtml(nodes, columns, levelNumbers, { bomName, printMode: false });
-  downloadFile(html, `${sanitizeFilename(bomName)}.html`, 'text/html;charset=utf-8');
+  const html = summary
+    ? _generateSummaryHtml(buildSummary(nodes), columns, { bomName, printMode: false })
+    : _generateHtml(nodes, columns, computeLevelNums(nodes), { bomName, printMode: false });
+  downloadFile(html, `${sanitizeFilename(bomName)}${summary ? '-summary' : ''}.html`, 'text/html;charset=utf-8');
 }
 
 // ─── PDF export (HTML → browser print dialog) ──────────────────────────────
 
-export async function exportPdf(rootRow, columns, { bomName }) {
+export async function exportPdf(rootRow, columns, { bomName, summary = false }) {
   const nodes = await fetchFullSubtree(rootRow);
-  const levelNumbers = computeLevelNums(nodes);
-  const html = _generateHtml(nodes, columns, levelNumbers, { bomName, printMode: true });
+  const html = summary
+    ? _generateSummaryHtml(buildSummary(nodes), columns, { bomName, printMode: true })
+    : _generateHtml(nodes, columns, computeLevelNums(nodes), { bomName, printMode: true });
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const win = window.open(url);
@@ -244,6 +313,78 @@ export async function exportPdf(rootRow, columns, { bomName }) {
   } else {
     downloadFile(html, `${sanitizeFilename(bomName)}.html`, 'text/html;charset=utf-8');
   }
+}
+
+// ─── Summary HTML generator ────────────────────────────────────────────────
+
+function _generateSummaryHtml(entries, columns, { bomName, printMode }) {
+  const date = new Date().toLocaleDateString();
+  const nonQtyCols = columns.filter((c) => c.key !== '__quantity');
+
+  const thCells =
+    nonQtyCols.map((c) => `<th>${escHtml(c.title)}</th>`).join('') +
+    `<th>Total Qty</th>`;
+
+  const bodyRows = entries
+    .map((e) => {
+      const cells = nonQtyCols
+        .map((c) => {
+          const val = stripHtml(getFieldValue(e.node, c));
+          if (isKeyCol(c)) {
+            const url = buildItemUrl(e.node);
+            const inner = url
+              ? `<a class="key-link" href="${escHtml(url)}" target="_blank">${escHtml(val)}</a>`
+              : escHtml(val);
+            return `<td>${inner}</td>`;
+          }
+          return `<td>${escHtml(val)}</td>`;
+        })
+        .join('');
+      return `<tr>${cells}<td>${escHtml(fmtQty(e.totalQty))}</td></tr>`;
+    })
+    .join('\n');
+
+  const printScript = printMode
+    ? `<script>window.addEventListener('load',function(){setTimeout(window.print,400);})<\/script>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BOM Summary: ${escHtml(bomName)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,Arial,sans-serif;padding:16px;color:#1a1a2e;font-size:13px}
+h1{font-size:18px;color:#5C35A8;margin:0 0 2px}
+.meta{font-size:12px;color:#888;margin-bottom:16px}
+table{border-collapse:collapse;width:100%;table-layout:auto}
+thead{position:sticky;top:0;z-index:1}
+th{background:#5C35A8;color:#fff;padding:7px 10px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap}
+td{padding:5px 10px;border-bottom:1px solid #e8e0f5;vertical-align:middle}
+tr:nth-child(even) td{background:#fafafe}
+tr:hover td{background:#eae5f5}
+.key-link{color:#5C35A8;text-decoration:none;font-weight:600}
+.key-link:hover{color:#3D2070;text-decoration:underline}
+@media print{
+  thead{position:static}
+  th{background:#5C35A8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<h1>${escHtml(bomName)}</h1>
+<p class="meta">Summary · Exported ${escHtml(date)} · ${entries.length} unique parts</p>
+<table>
+<thead><tr>${thCells}</tr></thead>
+<tbody>
+${bodyRows}
+</tbody>
+</table>
+${printScript}
+</body>
+</html>`;
 }
 
 // ─── Shared HTML generator ─────────────────────────────────────────────────

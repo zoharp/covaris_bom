@@ -8,15 +8,21 @@ const FORMATS = [
   { id: 'pdf',  label: 'PDF' },
 ];
 
+const VIEWS = [
+  { id: 'hierarchic', label: 'Hierarchic', desc: 'Full tree with level numbers' },
+  { id: 'summary',    label: 'Summary',    desc: 'One line per part, total quantity' },
+];
+
 export default function ExportModal({ rootNode, columns, onClose }) {
   const [format, setFormat] = useState('html');
+  const [view, setView] = useState('hierarchic');
   const [exporting, setExporting] = useState(false);
 
   async function handleExport() {
     const bomName = rootNode.row.objName || rootNode.row.userPrefix || 'BOM';
     setExporting(true);
     try {
-      const opts = { bomName };
+      const opts = { bomName, summary: view === 'summary' };
       if (format === 'json') await exportJson(rootNode.row, columns, opts);
       else if (format === 'csv') await exportCsv(rootNode.row, columns, opts);
       else if (format === 'html') await exportHtml(rootNode.row, columns, opts);
@@ -29,7 +35,7 @@ export default function ExportModal({ rootNode, columns, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">Export BOM</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
@@ -39,6 +45,25 @@ export default function ExportModal({ rootNode, columns, onClose }) {
           <p className="export-modal-bom-name">
             {rootNode.row.objName || rootNode.row.userPrefix || 'BOM'}
           </p>
+
+          <fieldset className="export-format-group">
+            <legend className="export-section-label">View</legend>
+            {VIEWS.map((v) => (
+              <label key={v.id} className="export-format-option">
+                <input
+                  type="radio"
+                  name="export-view"
+                  value={v.id}
+                  checked={view === v.id}
+                  onChange={() => setView(v.id)}
+                />
+                <span>
+                  <strong>{v.label}</strong>
+                  <span className="export-option-desc"> — {v.desc}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
 
           <fieldset className="export-format-group">
             <legend className="export-section-label">Format</legend>
