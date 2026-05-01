@@ -5,6 +5,53 @@
   overflow: hidden;
 }
 
+/* ─── Where-Used banner ─────────────────────────────────────── */
+
+.bom-where-used-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  background: var(--accent-light);
+  border-bottom: 1px solid var(--accent-border);
+  font-size: 13px;
+  color: var(--accent-hover);
+}
+
+.bom-where-used-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bom-where-used-back:hover {
+  background: #fff;
+  border-color: var(--accent-primary);
+}
+
+.bom-where-used-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bom-where-used-label strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
 /* ─── Toolbar ───────────────────────────────────────────────── */
 
 .bom-toolbar {
@@ -222,6 +269,62 @@
 .bom-icon {
   display: inline-flex;
   flex-shrink: 0;
+}
+
+/* ─── Row action buttons (Where Used / Locate) ──────────────── */
+
+.bom-row-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  padding: 0;
+  margin-left: 2px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.bom-row-action-btn:hover:not(:disabled) {
+  color: var(--accent-primary);
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+}
+
+.bom-row-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bom-row-action-btn--locate {
+  color: var(--accent-orange);
+}
+
+.bom-row-action-btn--locate:hover:not(:disabled) {
+  color: var(--accent-orange);
+  background: rgba(245, 166, 35, 0.12);
+  border-color: rgba(245, 166, 35, 0.4);
+}
+
+/* The descendant a Locate scrolled into view. Brief flash on arrival,
+   then settles into a steady highlight that persists until the next
+   Locate or until Where Used is exited. */
+@keyframes bom-row-located-flash {
+  0%   { background-color: rgba(245, 166, 35, 0.55); }
+  100% { background-color: rgba(245, 166, 35, 0.25); }
+}
+
+.bom-row--located {
+  /* !important so the steady highlight wins against `tr:nth-child(even)`
+     and `tr:hover`, both of which have higher specificity. Same pattern
+     as `.bom-row--errored` above. */
+  background-color: rgba(245, 166, 35, 0.25) !important;
+  animation: bom-row-located-flash 1s ease-out;
 }
 
 .bom-expand-all-btn {

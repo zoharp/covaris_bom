@@ -151,6 +151,7 @@ export async function fetchBoms({
   page = 1,
   pageSize = 100,
   searchQuery = null,
+  filterByOverride = null,
 } = {}) {
   const { bomFilterId, versionId: defaultVersion } = getSettings();
   const body = {
@@ -171,11 +172,33 @@ export async function fetchBoms({
   // Server-side name search — used by the Part Catalog search box so it
   // can find items beyond the current page. Single-quote-escaped, SQL LIKE.
   const q = searchQuery == null ? '' : String(searchQuery).trim();
-  if (q) {
-    const escaped = q.replace(/'/g, "''");
-    body.Filter_By = `[Obj_name] LIKE '%${escaped}%'`;
-  }
+  const searchClause = q
+    ? `[Obj_name] LIKE '%${q.replace(/'/g, "''")}%'`
+    : '';
+  // filterByOverride is the where-used SQL clause. When both override and
+  // search are present, AND them so the user can search within where-used results.
+  const override = filterByOverride ? String(filterByOverride).trim() : '';
+  const parts = [override, searchClause].filter(Boolean);
+  if (parts.length === 1) body.Filter_By = parts[0];
+  else if (parts.length > 1) body.Filter_By = `(${parts.join(') AND (')})`;
   return await _fetchFilter(body);
+}
+
+/**
+ * Build the `Filter_By` clause for a Where-Used query.
+ *
+ * `dbo.fn_GetRootParentByCS21(<id>)` is an Orcanos table-valued function that
+ * returns the root parent IDs (top-level BOMs) that contain the given part
+ * or part-instance. We wrap it in `ID IN (...)` so it composes with filter 609.
+ *
+ * The id is the row's `originalId`:
+ *   - PRT row → the parenthetical numeric from `Id` (same as itemId)
+ *   - PI row  → the digits from `Master Part Source` (e.g. `PRT-39382-...` → 39382)
+ * Both are already exposed by `_normalizeRow` as `row.originalId`.
+ */
+export function whereUsedFilterBy(id) {
+  const safe = String(id ?? '').replace(/'/g, "''");
+  return `ID IN (select * from dbo.fn_GetRootParentByCS21('${safe}'))`;
 }
 
 /**
@@ -345,10 +368,38 @@ function _normalizeRow(obj) {
   }
   if (!originalId) originalId = itemId;
 
+  // CS21 integer — for the Where-Used "Locate" feature. Two PIs that
+  // instance the same source PRT will have the same CS21 integer. The CS21
+  // column may be returned as a raw integer ("39382") or wrapped in a
+  // "PRT-39382-901631 description..." display string, so we pull the first
+  // run of digits either way. Empty for PRT rows (no CS21 field).
+  const cs21Field = sorted.find(
+    (f) =>
+      f.Name === 'CS21' ||
+      f.Title === 'CS21' ||
+      f.Name === 'Master Part Source' ||
+      f.Title === 'Master Part Source' ||
+      f.Name === 'Master_Part_Source'
+  );
+  // Prefer the raw stored value (Text/Value) over the Display label so the
+  // string we pass to dbo.fn_GetRootParentByCS21(...) matches whatever
+  // Orcanos stores in CS21 — not the descriptive "PRT-… description" label.
+  const cs21Raw = cs21Field
+    ? cs21Field.Text ||
+      cs21Field.Value ||
+      cs21Field.Display_text ||
+      cs21Field.Display ||
+      ''
+    : '';
+  const cs21IntMatch = String(cs21Raw).match(/\d+/);
+  const cs21Int = cs21IntMatch ? cs21IntMatch[0] : '';
+
   return {
     id,           // raw Id string from Orcanos (may include parenthetical)
     itemId,       // canonical numeric ID for URL building
     originalId,   // value to use as parent_original_id when expanding children
+    cs21Raw,      // raw CS21 column value (empty on PRT rows)
+    cs21Int,      // first integer extracted from CS21 (empty on PRT rows)
     type,
     fields: sorted,
     byName,

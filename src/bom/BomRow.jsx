@@ -5,6 +5,8 @@ import {
   PartIcon,
   ChevronIcon,
   UnknownChildIcon,
+  WhereUsedIcon,
+  LocateIcon,
 } from './icons';
 import Spinner from '../ui/Spinner';
 import { sanitizeHtml } from '../utils/sanitizeHtml';
@@ -20,6 +22,14 @@ export default function BomRow({
   onToggle,
   onExpandAll,
   expandAllProgress,
+  // Where-Used wiring. When `targetOriginalId` is set, we're viewing the
+  // where-used results — show Locate on roots, hide WhereUsed everywhere.
+  // Otherwise, show WhereUsed on non-BOM rows.
+  targetOriginalId = null,
+  onWhereUsed,
+  onLocate,
+  locating = false,
+  located = false,
 }) {
   const isRoot = node.isRoot;
 
@@ -55,6 +65,16 @@ export default function BomRow({
 
   // Chevron presence: hide it for leaves (rows we know have no children).
   const showChevron = !isLeaf;
+
+  // ─── Where-Used / Locate button visibility ──────────────────────────────
+  // Where-Used view (targetOriginalId set): show Locate on every root,
+  //   never show WhereUsed (we'd be entering where-used while in where-used).
+  // Normal view: show WhereUsed on any non-BOM row that has an originalId.
+  const inWhereUsed = !!targetOriginalId;
+  const isBom = (view === 'boms' && isRoot) || isBomByName;
+  const showWhereUsed =
+    !inWhereUsed && !isBom && !!node.row.originalId && !!onWhereUsed;
+  const showLocate = inWhereUsed && isRoot && !!onLocate;
 
   // ─── Synthetic columns ──────────────────────────────────────
   // The normalizer extracts the canonical numeric ID from row.id (which the
@@ -112,10 +132,12 @@ export default function BomRow({
 
   return (
     <tr
+      data-node-key={node.nodeKey}
       className={
         'bom-row' +
         (node.errored ? ' bom-row--errored' : '') +
-        (isRoot ? ' bom-row--root' : '')
+        (isRoot ? ' bom-row--root' : '') +
+        (located ? ' bom-row--located' : '')
       }
     >
       {/* Tree column ─ chevron + icon + indentation */}
@@ -138,6 +160,31 @@ export default function BomRow({
           </button>
 
           <span className="bom-icon">{iconNode}</span>
+
+          {showWhereUsed && (
+            <button
+              type="button"
+              className="bom-row-action-btn"
+              onClick={() => onWhereUsed(node)}
+              title={`Where used — find BOMs that contain "${objName}"`}
+              aria-label="Where used"
+            >
+              <WhereUsedIcon />
+            </button>
+          )}
+
+          {showLocate && (
+            <button
+              type="button"
+              className="bom-row-action-btn bom-row-action-btn--locate"
+              onClick={() => onLocate(node)}
+              disabled={locating}
+              title="Locate the part inside this BOM"
+              aria-label="Locate"
+            >
+              {locating ? <Spinner size={12} /> : <LocateIcon />}
+            </button>
+          )}
 
           {isRoot && (
             <button

@@ -5,7 +5,7 @@ Orcanos QMS reference project). Read this once at the start of any working
 session before making changes.
 
 ### Current versions (update after every bump)
-- **App:** `0.3.3`
+- **App:** `0.4.7`
 
 ---
 
@@ -211,6 +211,62 @@ so the cache and pagination reset cleanly.
 
 ---
 
+## Where Used — same screen, different filter
+
+Clicking the **Where Used** icon (magnifier next to the item icon) on any
+non-BOM row swaps the same `BomTree` to a where-used result set:
+
+- `topFilterId: bomFilterId` (609) — results are root BOMs regardless of the
+  view the user came from, because `dbo.fn_GetRootParentByCS21` returns roots.
+- `topFilterByOverride: ID IN (select * from dbo.fn_GetRootParentByCS21('<arg>'))`
+  — extra `Filter_By` clause AND-ed onto the search clause when both are present.
+  Built by `whereUsedFilterBy(arg)` in `orcanosClient.js`. The `<arg>` differs
+  by source row type:
+    - **PRT click** → the part's own id (`row.itemId`).
+    - **PI  click** → the PI's raw CS21 value (`row.cs21Raw`, prefers
+      `Text`/`Value` over `Display_text` so we pass the stored value, not the
+      "PRT-… description" label).
+- `targetOriginalId: <id>` — the part's `originalId`, passed through to `BomRow`
+  so it knows to render the **Locate** crosshair button on each root.
+- `whereUsedLabel` + `onExitWhereUsed` — drive the back banner at the top of
+  the BomTree.
+
+**Locate** behavior (`handleLocate` in `BomTree.jsx` → `tree.findAndExpand`
+in the hook): true level-order BFS. Each round fully expands the current
+frontier (every assembly's children fetched, parallel up to
+`EXPAND_ALL_CONCURRENCY = 6`); once the level is fully expanded, the new
+rows are scanned for the target — first match wins. If no match, the next
+round's frontier is the assemblies among those new rows.
+
+The match value passed to `findAndExpand` is the SAME value we sent to
+`dbo.fn_GetRootParentByCS21()` when entering Where Used (`targetOriginalId`).
+A descendant matches when `row.cs21Raw === target` OR `row.cs21Int === target`
+— covers PRT case (target is the part's id, matches PI `cs21Int`) and PI case
+(target is the source PI's stored CS21 string, matches `cs21Raw` exactly).
+
+Scrolls the match into view via `data-node-key` selector and adds
+`bom-row--located` — a brief 1s flash settling into a steady amber
+background. The highlight is **persistent**: it stays until the next Locate
+overwrites it or until Where Used is exited (the WU tree unmounts on Back).
+The static rule uses `!important` so it wins against `tr:nth-child(even)`
+and `tr:hover`, both of which have higher specificity than a single class.
+If the target can't be computed (rare), Locate shows a toast and exits.
+
+**Preserving main-view state across Where Used.** `App.jsx` keeps the main
+BomTree mounted continuously and just hides it with `display:none` while
+the WU tree is mounted alongside. Pagination, search, expanded subtrees
+and the child cache survive a round-trip into Where Used and back — Back
+just unmounts the WU tree and the hidden main tree reappears with its
+prior state intact. Switching the sidebar view (BOMs ↔ Part Catalog)
+exits WU and remounts main on the new filter.
+
+`App.jsx` tracks `whereUsedTarget = { sqlArg, cs21Int, label }`. The WU
+BomTree's key includes `wu/<sqlArg>` so changing targets remounts cleanly.
+The Where-Used button is hidden inside Where-Used view (no nesting);
+Locate shows only on roots.
+
+---
+
 ## Tree-grid behavior — non-obvious details
 
 1. **Columns are dynamic.** Read the `Field` array of the first returned row and
@@ -265,11 +321,28 @@ source — if you need a new tag, add it there, don't bypass.
 ## Operational scripts
 
 - `run.bat` / `run.sh` — installs deps if missing, then `npm run dev`.
-- `deploy.bat` / `deploy.sh` — `npm run build` then `vercel --prod`. Requires
-  the Vercel CLI installed and `vercel login` already done once on the machine.
+- `deploy.bat` / `deploy.sh` — `npm run build` then `vercel --prod` (CLI path).
+  Kept around as a fallback, but **the normal deploy path is GitHub →
+  Vercel auto-deploy** (see below). The CLI script only works if the user
+  has run `vercel login` on the machine.
 
 Don't add new scripts for things `npm` can do directly. The `.bat`/`.sh` pair
 exists because the team uses Windows.
+
+## Deploys — push to GitHub, Vercel takes it from there
+
+The Vercel project is wired to the GitHub repo `zoharp/covaris_bom` with
+auto-deploys on `main`. The deploy flow is just:
+
+1. Bump the version (`package.json` + `CLAUDE.md` + `release_notes.json`),
+2. `git commit` + `git push origin main`,
+3. Vercel picks it up within ~30–60s and rolls out a new production build.
+
+There is **no need to run `vercel --prod` from the CLI** under normal
+circumstances. If a build fails, check the Vercel dashboard for the
+deployment log — Vercel runs `npm run build` against the pushed commit and
+serves `dist/` as a static site. The only project-side config Vercel reads
+is `vercel.json` (rewrites — currently routing `/api/orcanos/*` to Orcanos).
 
 ---
 

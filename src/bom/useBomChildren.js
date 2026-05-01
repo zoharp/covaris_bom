@@ -249,8 +249,18 @@ function reducer(state, action) {
 //
 // `topSearchQuery` is forwarded to the server (`Filter_By: [Obj_name] LIKE
 // '%query%'`). Changing it re-runs `loadTop(1)` automatically.
+//
+// `topFilterByOverride` is an extra SQL `Filter_By` clause that's combined
+// (AND-ed) with the search clause. Used by the Where-Used flow to swap the
+// top-level result set to only the BOMs containing a target part. Changing
+// it also re-runs `loadTop(1)` automatically.
 // ─────────────────────────────────────────────────────────────────────────
-export function useBomChildren({ onAuthExpired, topFilterId, topSearchQuery = '' }) {
+export function useBomChildren({
+  onAuthExpired,
+  topFilterId,
+  topSearchQuery = '',
+  topFilterByOverride = null,
+}) {
   const [state, dispatch] = useReducer(reducer, initialState, (init) => ({
     ...init,
     topPageSize: getSettings().pageSize ?? init.topPageSize,
@@ -300,6 +310,7 @@ export function useBomChildren({ onAuthExpired, topFilterId, topSearchQuery = ''
           pageSize,
           filterId: topFilterId,
           searchQuery: topSearchQuery,
+          filterByOverride: topFilterByOverride,
         });
         dispatch({
           type: 'TOP_LOAD_OK',
@@ -317,7 +328,7 @@ export function useBomChildren({ onAuthExpired, topFilterId, topSearchQuery = ''
         showToast(err.message || 'Failed to load BOMs.', 'error');
       }
     },
-    [onAuthExpired, showToast, topFilterId, topSearchQuery]
+    [onAuthExpired, showToast, topFilterId, topSearchQuery, topFilterByOverride]
   );
 
   // ─── Internal: load children of a node and dispatch CHILD_LOAD_OK ──────
@@ -528,6 +539,120 @@ export function useBomChildren({ onAuthExpired, topFilterId, topSearchQuery = ''
     [onAuthExpired, showToast]
   );
 
+  // ─── Where-Used "Locate" — true level-order BFS ────────────────────────
+  // At each round we fully expand the current frontier (every assembly's
+  // children fetched, in parallel up to EXPAND_ALL_CONCURRENCY). Once the
+  // whole level is expanded we scan the newly-added rows for the target;
+  // first match wins. If nothing matches, the next round's frontier is the
+  // assemblies among those new rows. Stops as soon as the target is found.
+  //
+  // Match predicate: descendant.cs21Raw === target  OR  descendant.cs21Int
+  // === target. The same `target` value is what was sent into
+  // dbo.fn_GetRootParentByCS21() when entering Where Used:
+  //   - PRT click → target = the part's own id (matches PI cs21Int).
+  //   - PI  click → target = the source PI's raw CS21 (matches cs21Raw).
+  const findAndExpand = useCallback(
+    async (rootNode, { target }) => {
+      const t = String(target ?? '').trim();
+      if (!t) return null;
+
+      let foundKey = null;
+      let stopped = false;
+
+      const startCurrent =
+        nodesRef.current.find((n) => n.nodeKey === rootNode.nodeKey) ||
+        rootNode;
+
+      let frontier = [
+        {
+          nodeKey: startCurrent.nodeKey,
+          row: startCurrent.row,
+          depth: startCurrent.depth,
+        },
+      ];
+
+      while (frontier.length > 0 && !stopped) {
+        // Fetch children for every assembly in the frontier, in parallel.
+        const newChildren = [];
+
+        await mapWithLimit(
+          frontier,
+          EXPAND_ALL_CONCURRENCY,
+          async (item) => {
+            if (stopped) return;
+            if (item.depth >= EXPAND_ALL_DEPTH_CAP) return;
+
+            let rows;
+            try {
+              const cached = childCache.current.get(item.nodeKey);
+              if (cached?.rows) {
+                rows = cached.rows;
+              } else {
+                const res = await fetchChildren({
+                  parentOriginalId: item.row.originalId,
+                });
+                rows = res.rows;
+                childCache.current.set(item.nodeKey, {
+                  rows,
+                  subtree: null,
+                });
+              }
+            } catch (err) {
+              if (err.httpCode === 401) {
+                stopped = true;
+                onAuthExpired?.(err.message);
+                return;
+              }
+              showToast(
+                err.message ||
+                  `Failed to load children of "${item.row.objName}".`,
+                'error'
+              );
+              return;
+            }
+
+            const childKeys = rows.map(() => nextNodeKey());
+            dispatch({
+              type: 'CHILD_LOAD_OK',
+              parentKey: item.nodeKey,
+              rows,
+              childKeys,
+            });
+
+            for (let i = 0; i < rows.length; i++) {
+              newChildren.push({
+                nodeKey: childKeys[i],
+                row: rows[i],
+                depth: item.depth + 1,
+              });
+            }
+          }
+        );
+
+        if (stopped) break;
+
+        // Scan the level we just expanded — first match wins.
+        for (const c of newChildren) {
+          const cs21Raw = String(c.row.cs21Raw || '').trim();
+          const cs21Int = String(c.row.cs21Int || '').trim();
+          if (cs21Raw === t || (cs21Int && cs21Int === t)) {
+            foundKey = c.nodeKey;
+            stopped = true;
+            break;
+          }
+        }
+        if (stopped) break;
+
+        // Next round: only nodes that aren't known leaves. Unprobed rows
+        // (hasChildren undefined) are kept since we can't yet rule them out.
+        frontier = newChildren.filter((c) => c.row.hasChildren !== false);
+      }
+
+      return foundKey;
+    },
+    [onAuthExpired, showToast]
+  );
+
   return {
     nodes: state.nodes,
     topLoading: state.topLoading,
@@ -539,5 +664,6 @@ export function useBomChildren({ onAuthExpired, topFilterId, topSearchQuery = ''
     loadTop,
     toggle,
     expandAll,
+    findAndExpand,
   };
 }

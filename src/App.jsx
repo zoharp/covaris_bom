@@ -5,7 +5,12 @@ import BomTree from './bom/BomTree';
 import SettingsModal from './settings/SettingsModal';
 import ReleaseNotesModal from './release/ReleaseNotesModal';
 import { ToastProvider, useToast } from './ui/Toast';
-import { getAuth, getUser, signOut as apiSignOut } from './api/orcanosClient';
+import {
+  getAuth,
+  getUser,
+  signOut as apiSignOut,
+  whereUsedFilterBy,
+} from './api/orcanosClient';
 import { getSettings } from './settings/settingsStore';
 
 export default function App() {
@@ -24,9 +29,47 @@ function AppShell() {
   // Active main-view: 'boms' (BOM Filter) or 'parts' (Part Catalog filter).
   // Both views share BomTree — only the top filter ID and label differ.
   const [view, setView] = useState('boms');
+  // Where-Used target: { id, label } when active, null otherwise. When set,
+  // BomTree renders the BOMs that contain that part, and offers a Locate
+  // button on each root. Cleared by the back banner.
+  const [whereUsedTarget, setWhereUsedTarget] = useState(null);
   // Bumped after a successful login or sign-out so children can reset.
   const [authEpoch, setAuthEpoch] = useState(0);
   const { showToast } = useToast();
+
+  // Switching the sidebar view also exits Where-Used (we'd otherwise show
+  // where-used results under the wrong view label).
+  const handleSelectView = useCallback((nextView) => {
+    setWhereUsedTarget(null);
+    setView(nextView);
+  }, []);
+
+  const handleWhereUsed = useCallback((node) => {
+    // Two values get captured per Where-Used target:
+    //
+    // 1. `sqlArg` — passed to dbo.fn_GetRootParentByCS21(<sqlArg>) inside
+    //    the Filter_By override. Per spec:
+    //      PRT click → the part's own ID (itemId).
+    //      PI  click → the PI's raw CS21 value (NOT the extracted integer).
+    //
+    // 2. `cs21Int` — the integer Locate uses to match descendants by their
+    //    own cs21Int. Both PRT.itemId and the integer pulled from CS21
+    //    represent the same source-PRT id.
+    const isPart = node.row.type === 'PRT';
+    const sqlArg = isPart
+      ? String(node.row.itemId || '').trim()
+      : String(node.row.cs21Raw || node.row.cs21Int || '').trim();
+    const cs21Int = isPart
+      ? String(node.row.itemId || '').trim()
+      : node.row.cs21Int || '';
+    setWhereUsedTarget({
+      sqlArg,
+      cs21Int,
+      label: node.row.objName || `#${sqlArg}`,
+    });
+  }, []);
+
+  const handleExitWhereUsed = useCallback(() => setWhereUsedTarget(null), []);
 
   // ─── Login / sign-out handlers ──────────────────────────────────────────
   const handleLoginSuccess = useCallback((user) => {
@@ -63,7 +106,7 @@ function AppShell() {
       <Sidebar
         username={username}
         view={view}
-        onSelectView={setView}
+        onSelectView={handleSelectView}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenReleaseNotes={() => setReleaseNotesOpen(true)}
         onSignOut={handleSignOut}
@@ -72,16 +115,46 @@ function AppShell() {
         {(() => {
           const s = getSettings();
           const isBoms = view === 'boms';
-          // Remount BomTree on view change so it reloads with the new
-          // filter and resets pagination/cache.
+          const wuActive = !!whereUsedTarget;
+          // The main BomTree (BOMs / Part Catalog) stays mounted whenever
+          // Where Used is active — we just hide it with `display:none` so its
+          // pagination, search, expanded subtrees and child cache survive a
+          // round-trip into Where Used and back. The Where Used tree mounts
+          // alongside, only while active; clicking Back unmounts it and the
+          // hidden main tree reappears in its previous state.
           return (
-            <BomTree
-              key={`${view}/${authEpoch}`}
-              onAuthExpired={handleAuthExpired}
-              view={view}
-              topFilterId={isBoms ? s.bomFilterId : s.partCatalogFilterId}
-              topLabel={isBoms ? 'BOMs' : 'Parts'}
-            />
+            <>
+              <div
+                className="app-main-pane"
+                style={{ display: wuActive ? 'none' : 'contents' }}
+              >
+                <BomTree
+                  key={`main/${view}/${authEpoch}`}
+                  onAuthExpired={handleAuthExpired}
+                  view={view}
+                  topFilterId={isBoms ? s.bomFilterId : s.partCatalogFilterId}
+                  topLabel={isBoms ? 'BOMs' : 'Parts'}
+                  onWhereUsed={handleWhereUsed}
+                />
+              </div>
+              {wuActive && (
+                <BomTree
+                  key={`wu/${authEpoch}/${whereUsedTarget.sqlArg}`}
+                  onAuthExpired={handleAuthExpired}
+                  view="boms"
+                  topFilterId={s.bomFilterId}
+                  topLabel="BOMs"
+                  topFilterByOverride={whereUsedFilterBy(
+                    whereUsedTarget.sqlArg
+                  )}
+                  targetOriginalId={whereUsedTarget.sqlArg}
+                  targetCs21Int={whereUsedTarget.cs21Int}
+                  whereUsedLabel={whereUsedTarget.label}
+                  onExitWhereUsed={handleExitWhereUsed}
+                  onWhereUsed={handleWhereUsed}
+                />
+              )}
+            </>
           );
         })()}
       </main>

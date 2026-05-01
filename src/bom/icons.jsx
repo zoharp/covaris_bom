@@ -100,6 +100,54 @@ export function ChevronIcon({ open, size = 12 }) {
   );
 }
 
+// Where Used — magnifier over a small hierarchy. Click-to-find-where-it's-used.
+export function WhereUsedIcon({ size = 14 }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="6.5" cy="6.5" r="3.6"
+              fill="none" stroke="currentColor" strokeWidth="1.4"/>
+      <line x1="9.4" y1="9.4" x2="13" y2="13"
+            stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <line x1="4.8" y1="6.5" x2="8.2" y2="6.5"
+            stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="6.5" y1="4.8" x2="6.5" y2="8.2"
+            stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// Locate — a target/crosshair. Used in Where-Used results to expand a BOM
+// and scroll to the matching descendant.
+export function LocateIcon({ size = 14 }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="8" cy="8" r="5"
+              fill="none" stroke="currentColor" strokeWidth="1.4"/>
+      <circle cx="8" cy="8" r="1.6" fill="currentColor"/>
+      <line x1="8" y1="1.4" x2="8" y2="3.4"
+            stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <line x1="8" y1="12.6" x2="8" y2="14.6"
+            stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <line x1="1.4" y1="8" x2="3.4" y2="8"
+            stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <line x1="12.6" y1="8" x2="14.6" y2="8"
+            stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 // Used as the icon for a row of unknown subtype that hasn't been expanded yet.
 // Once expanded it will be replaced with AssemblyIcon or PartIcon.
 export function UnknownChildIcon({ size = 16 }) {

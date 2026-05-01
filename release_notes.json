@@ -1,5 +1,72 @@
 [
   {
+    "version": "0.4.7",
+    "date": "2026-05-01",
+    "changes": [
+      "Fix: Locate highlight now actually persists. The static `.bom-row--located` rule was being overridden by `tr:nth-child(even)` and `tr:hover` (both higher specificity), so the amber background only showed during the 1s intro animation and then vanished. Made the static rule `!important` (same pattern as `.bom-row--errored`)."
+    ]
+  },
+  {
+    "version": "0.4.6",
+    "date": "2026-05-01",
+    "changes": [
+      "Where Used → Back now preserves the previous BOMs / Part Catalog state. The main tree stays mounted (just hidden) while Where Used is active, so pagination, search, expanded subtrees and the child cache survive a round-trip and are restored instantly on Back.",
+      "Where Used → Locate is now a true level-order BFS: fully expand the current level, scan for the target, stop on first match, otherwise descend. Replaces the previous cheap `CS21 = '<value>'` per-level filter; the level is now visible to the user as it's being walked.",
+      "Locate match predicate: descendant.cs21Raw === target OR descendant.cs21Int === target. The `target` is the same value passed to `dbo.fn_GetRootParentByCS21()` (PRT click → itemId, PI click → cs21Raw).",
+      "Locate highlight is now persistent: brief amber flash on arrival, then settles to a steady highlight that stays until the next Locate overwrites it or Where Used is exited.",
+      "Removed unused `cs21Equals` parameter from `fetchChildren` (was only used by the previous Locate strategy)."
+    ]
+  },
+  {
+    "version": "0.4.5",
+    "date": "2026-05-01",
+    "changes": [
+      "Where Used → Locate is now incremental: BFS-expands the BOM level by level and stops the moment the target is found, instead of walking the entire subtree.",
+      "At each level the children fetch uses `Filter_By: parent_original_id = X AND CS21 = '<value>'` (the same value passed to fn_GetRootParentByCS21). A non-empty result is the match — no client-side scan needed. If empty, the level is fetched normally so the BFS can recurse into Assembly children.",
+      "Added optional `cs21Equals` parameter to `fetchChildren` and a new `findAndExpand(rootNode, { cs21Filter })` method on `useBomChildren`."
+    ]
+  },
+  {
+    "version": "0.4.4",
+    "date": "2026-05-01",
+    "changes": [
+      "Where Used SQL value differs by row type: a Part Instance now passes its **raw CS21 value** to `dbo.fn_GetRootParentByCS21(...)` (instead of the extracted integer). Parts still pass their own id. Added `row.cs21Raw` to the row normalizer for this."
+    ]
+  },
+  {
+    "version": "0.4.3",
+    "date": "2026-05-01",
+    "changes": [
+      "Where Used → Locate matching is now id-based: a descendant matches when its CS21 integer equals the target. Target is computed by row type: for a Part (PRT) it's the part's own id; for a Part Instance (PI) it's the PI's CS21 integer (source PRT's id).",
+      "Each row exposes a new `cs21Int` field — first run of digits from CS21 / Master Part Source. Empty for PRTs (no CS21 column)."
+    ]
+  },
+  {
+    "version": "0.4.2",
+    "date": "2026-05-01",
+    "changes": [
+      "Where Used → Locate now matches the descendant whose **CS21** (Master Part Source) value equals the where-used item's CS21. That's the canonical 'same part instance' check — replaces the previous Key-similarity heuristic."
+    ]
+  },
+  {
+    "version": "0.4.1",
+    "date": "2026-05-01",
+    "changes": [
+      "Where Used → Locate now matches descendants by **Key** (User_Prefix) similarity rather than originalId. A descendant matches when its Key equals the target Key, or when one is a prefix of the other — covers Orcanos PI-key conventions where a Part Instance's Key is derived from its source PRT's Key."
+    ]
+  },
+  {
+    "version": "0.4.0",
+    "date": "2026-05-01",
+    "changes": [
+      "Where Used: every non-BOM row now has a magnifier icon next to the item icon. Click it to swap the tree to the BOMs that contain that part (filter 609 + `Filter_By: ID IN (select * from dbo.fn_GetRootParentByCS21('<id>'))`).",
+      "Where-Used view reuses the main BomTree — pagination, search, expand-all, probe-on-expand, Key→Orcanos hyperlink all work as in the regular view.",
+      "Each BOM in the Where-Used result has a Locate (crosshair) button. Click it to expand the BOM and scroll/flash-highlight the descendant matching the original part.",
+      "Back banner at the top of the where-used view returns to the previous view. Switching sidebar (BOMs / Part Catalog) also exits Where-Used.",
+      "Empty state in Where-Used reads 'This item is not used in any BOM.'"
+    ]
+  },
+  {
     "version": "0.3.3",
     "date": "2026-04-30",
     "changes": [

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useBomChildren } from './useBomChildren';
 import BomRow from './BomRow';
 import Spinner from '../ui/Spinner';
+import { useToast } from '../ui/Toast';
 import './BomTree.css';
 
 // Keep the search debounced so typing doesn't re-render on every keystroke.
@@ -42,11 +43,23 @@ function normalizeColKey(s) {
     .trim();
 }
 
+
 export default function BomTree({
   onAuthExpired,
   view = 'boms',
   topFilterId,
   topLabel = 'BOMs',
+  // Where-Used wiring. When set, the tree renders the where-used result set.
+  topFilterByOverride = null,
+  targetOriginalId = null,
+  // Integer used by "Locate" to find the matching PI inside an expanded BOM.
+  //   PRT click → the part's own id.
+  //   PI  click → the PI's CS21 integer (source PRT's id).
+  // Match: descendant.row.cs21Int === targetCs21Int.
+  targetCs21Int = '',
+  whereUsedLabel = '',
+  onExitWhereUsed,
+  onWhereUsed,
 }) {
   const [search, setSearch] = useState('');
   // 350ms debounce — slightly longer than client-only filtering since each
@@ -56,10 +69,17 @@ export default function BomTree({
     onAuthExpired,
     topFilterId,
     topSearchQuery: debounced,
+    topFilterByOverride,
   });
 
   // Per-root progress for "Expand all" — { rootUid: "12 / 47" or null }.
   const [progress, setProgress] = useState({});
+
+  // Where-Used "Locate" state. `locatingKey` is the rootKey currently being
+  // expanded; `locatedKey` is the descendant that should briefly highlight.
+  const [locatingKey, setLocatingKey] = useState(null);
+  const [locatedKey, setLocatedKey] = useState(null);
+  const { showToast } = useToast();
 
   // Re-runs on mount AND whenever `loadTop`'s identity changes — which
   // happens when topFilterId or topSearchQuery changes (see hook's useCallback
@@ -155,6 +175,40 @@ export default function BomTree({
   }, [tree.nodes, visibleSet]);
 
   // ─── Handlers ─────────────────────────────────────────────────
+  // Click "Locate" on a where-used root: level-order BFS — fully expand the
+  // current level, scan it for the target, stop on first match, otherwise
+  // descend. The match value is the same one we passed to
+  // dbo.fn_GetRootParentByCS21() when entering Where Used (`targetOriginalId`).
+  // The descendant matches when its `cs21Raw` or `cs21Int` equals that value.
+  async function handleLocate(rootNode) {
+    const target = String(targetOriginalId || '').trim();
+    if (!target) {
+      showToast('Cannot locate: no source ID for this item.', 'error');
+      return;
+    }
+    setLocatingKey(rootNode.nodeKey);
+    try {
+      const foundKey = await tree.findAndExpand(rootNode, { target });
+      if (!foundKey) {
+        showToast('Item not found inside this BOM.', 'error');
+        return;
+      }
+      // Persistent highlight — overwrite if a previous Locate had set one.
+      setLocatedKey(foundKey);
+      // Defer to the next paint so React has rendered the row before we scroll.
+      requestAnimationFrame(() => {
+        const el = document.querySelector(
+          `tr[data-node-key="${foundKey}"]`
+        );
+        if (el && el.scrollIntoView) {
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      });
+    } finally {
+      setLocatingKey(null);
+    }
+  }
+
   function handleExpandAll(node) {
     setProgress((p) => ({ ...p, [node.nodeKey]: { done: 0, total: 1 } }));
     tree
@@ -174,8 +228,26 @@ export default function BomTree({
   }
 
   // ─── Render ───────────────────────────────────────────────────
+  const inWhereUsed = !!targetOriginalId;
+
   return (
     <div className="bom-tree">
+      {inWhereUsed && (
+        <div className="bom-where-used-banner">
+          <button
+            type="button"
+            className="bom-where-used-back"
+            onClick={onExitWhereUsed}
+            aria-label="Back"
+          >
+            ← Back
+          </button>
+          <span className="bom-where-used-label">
+            Where used:&nbsp;
+            <strong>{whereUsedLabel || `#${targetOriginalId}`}</strong>
+          </span>
+        </div>
+      )}
       <div className="bom-toolbar">
         <div className="bom-search">
           <span className="bom-search-icon">🔍</span>
@@ -227,7 +299,11 @@ export default function BomTree({
 
       {!tree.topLoading && tree.nodes.length === 0 && !tree.topError && (
         <div className="bom-empty">
-          <p>No {topLabel} found.</p>
+          <p>
+            {inWhereUsed
+              ? 'This item is not used in any BOM.'
+              : `No ${topLabel} found.`}
+          </p>
         </div>
       )}
 
@@ -253,6 +329,11 @@ export default function BomTree({
                     onToggle={() => tree.toggle(node)}
                     onExpandAll={() => handleExpandAll(node)}
                     expandAllProgress={progress[node.nodeKey]}
+                    targetOriginalId={targetOriginalId}
+                    onWhereUsed={onWhereUsed}
+                    onLocate={inWhereUsed ? handleLocate : undefined}
+                    locating={locatingKey === node.nodeKey}
+                    located={locatedKey === node.nodeKey}
                   />
                 ))}
               </tbody>
