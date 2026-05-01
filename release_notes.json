@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.0.2",
+    "date": "2026-05-01",
+    "changes": [
+      "Revert: removed background probe on initial load. Icons and chevrons are now determined on expand (probe-on-expand), same as before 0.5.4. The background probe caused display issues on the main screen."
+    ]
+  },
+  {
     "version": "1.0.1",
     "date": "2026-05-01",
     "changes": [

@@ -102,9 +102,7 @@ function reducer(state, action) {
       return { ...state, topLoading: true, topError: null };
 
     case 'TOP_LOAD_OK': {
-      // Pre-generated keys let `loadTop` probe roots in the background and
-      // dispatch NODE_SET_HAS_CHILDREN by key without reading post-render state.
-      const { rows, topKeys } = action;
+      const { rows } = action;
       return {
         ...state,
         topLoading: false,
@@ -113,11 +111,7 @@ function reducer(state, action) {
         topPageSize: action.pageSize,
         topTotal: action.total,
         topHasMore: rows.length >= action.pageSize,
-        nodes: rows.map((row, i) => {
-          const node = makeNode(row, { depth: 0, isRoot: true });
-          if (topKeys?.[i]) node.nodeKey = topKeys[i];
-          return node;
-        }),
+        nodes: rows.map((row) => makeNode(row, { depth: 0, isRoot: true })),
       };
     }
 
@@ -241,18 +235,6 @@ function reducer(state, action) {
       };
     }
 
-    case 'NODE_SET_HAS_CHILDREN': {
-      // Background probe result — update a single root's hasChildren so its
-      // chevron and icon render correctly before the user clicks expand.
-      // If the node is no longer in state (page changed), this is a no-op.
-      const nodes = state.nodes.map((n) =>
-        n.nodeKey === action.nodeKey
-          ? { ...n, row: { ...n.row, hasChildren: action.hasChildren } }
-          : n
-      );
-      return { ...state, nodes };
-    }
-
     default:
       return state;
   }
@@ -330,35 +312,7 @@ export function useBomChildren({
           searchQuery: topSearchQuery,
           filterByOverride: topFilterByOverride,
         });
-        // Pre-generate nodeKeys so we can reference them in the background probe
-        // without waiting for a re-render to expose the new state.
-        const topKeys = rows.map(() => nextNodeKey());
-        dispatch({ type: 'TOP_LOAD_OK', rows, total, page: pageNum, pageSize, topKeys });
-
-        // Background: probe each root for children so the chevron and icon
-        // are correct before the user clicks anything. Fire-and-forget —
-        // stale results (page changed mid-flight) are harmless: the reducer's
-        // map finds no matching nodeKey and returns state unchanged.
-        mapWithLimit(rows, PROBE_CONCURRENCY, async (row, i) => {
-          if (!row.originalId) return;
-          let childRows;
-          if (probeRowsCache.current.has(row.originalId)) {
-            childRows = probeRowsCache.current.get(row.originalId);
-          } else {
-            try {
-              const res = await fetchChildren({ parentOriginalId: row.originalId });
-              childRows = res.rows;
-              probeRowsCache.current.set(row.originalId, childRows);
-            } catch {
-              return; // probe failure is non-critical
-            }
-          }
-          dispatch({
-            type: 'NODE_SET_HAS_CHILDREN',
-            nodeKey: topKeys[i],
-            hasChildren: childRows.length > 0,
-          });
-        });
+        dispatch({ type: 'TOP_LOAD_OK', rows, total, page: pageNum, pageSize });
       } catch (err) {
         if (err.httpCode === 401) {
           onAuthExpired?.(err.message);
