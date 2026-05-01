@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.1.1",
+    "date": "2026-05-01",
+    "changes": [
+      "✨ **Summary export: Occurrences** — Summary view now includes an Occurrences column showing how many times each part appears in the BOM (across JSON, CSV, HTML, and PDF)."
+    ]
+  },
+  {
     "version": "1.1.0",
     "date": "2026-05-01",
     "changes": [

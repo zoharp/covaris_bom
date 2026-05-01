@@ -179,8 +179,9 @@ function buildSummary(nodes) {
     const qty = parseFloat(qtyRaw) || 1;
     if (map.has(partKey)) {
       map.get(partKey).totalQty += qty;
+      map.get(partKey).count += 1;
     } else {
-      map.set(partKey, { node: n, totalQty: qty });
+      map.set(partKey, { node: n, totalQty: qty, count: 1 });
     }
   }
   return [...map.values()].sort((a, b) => {
@@ -210,6 +211,7 @@ export async function exportJson(rootRow, columns, { bomName, summary = false })
         const fields = {};
         for (const col of nonQtyCols) fields[col.title] = stripHtml(getFieldValue(e.node, col));
         fields['Total Qty'] = e.totalQty;
+        fields['Occurrences'] = e.count;
         return { type: e.node.row.type, fields };
       }),
     };
@@ -252,7 +254,7 @@ export async function exportCsv(rootRow, columns, { bomName, summary = false }) 
   if (summary) {
     const entries = buildSummary(nodes);
     const nonQtyCols = columns.filter((c) => c.key !== '__quantity');
-    const headers = ['Type', ...nonQtyCols.map((c) => c.title), 'Total Qty'];
+    const headers = ['Type', ...nonQtyCols.map((c) => c.title), 'Total Qty', 'Occurrences'];
     const lines = [
       headers.map(csvEscape).join(','),
       ...entries.map((e) => {
@@ -260,6 +262,7 @@ export async function exportCsv(rootRow, columns, { bomName, summary = false }) 
           e.node.row.type,
           ...nonQtyCols.map((c) => stripHtml(getFieldValue(e.node, c))),
           fmtQty(e.totalQty),
+          String(e.count),
         ];
         return cells.map(csvEscape).join(',');
       }),
@@ -323,7 +326,7 @@ function _generateSummaryHtml(entries, columns, { bomName, printMode }) {
 
   const thCells =
     nonQtyCols.map((c) => `<th>${escHtml(c.title)}</th>`).join('') +
-    `<th>Total Qty</th>`;
+    `<th>Total Qty</th><th>Occurrences</th>`;
 
   const bodyRows = entries
     .map((e) => {
@@ -340,7 +343,7 @@ function _generateSummaryHtml(entries, columns, { bomName, printMode }) {
           return `<td>${escHtml(val)}</td>`;
         })
         .join('');
-      return `<tr>${cells}<td>${escHtml(fmtQty(e.totalQty))}</td></tr>`;
+      return `<tr>${cells}<td>${escHtml(fmtQty(e.totalQty))}</td><td>${e.count}</td></tr>`;
     })
     .join('\n');
 
