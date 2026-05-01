@@ -50,7 +50,9 @@ function AppShell() {
     // 1. `sqlArg` — passed to dbo.fn_GetRootParentByCS21(<sqlArg>) inside
     //    the Filter_By override. Per spec:
     //      PRT click → the part's own ID (itemId).
-    //      PI  click → the PI's raw CS21 value (NOT the extracted integer).
+    //      PI  click → cs21Int (the numeric ID extracted from Master Part Source).
+    //    cs21Raw is NOT used here because it can fall back to Display_text, which
+    //    is the long "PRT-37679-600244 Label…" label rather than a bare ID.
     //
     // 2. `cs21Int` — the integer Locate uses to match descendants by their
     //    own cs21Int. Both PRT.itemId and the integer pulled from CS21
@@ -58,7 +60,7 @@ function AppShell() {
     const isPart = node.row.type === 'PRT';
     const sqlArg = isPart
       ? String(node.row.itemId || '').trim()
-      : String(node.row.cs21Raw || node.row.cs21Int || '').trim();
+      : String(node.row.cs21Int || '').trim();
     const cs21Int = isPart
       ? String(node.row.itemId || '').trim()
       : node.row.cs21Int || '';

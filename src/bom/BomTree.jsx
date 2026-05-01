@@ -1,9 +1,32 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useBomChildren } from './useBomChildren';
 import BomRow from './BomRow';
+import ExportModal from './ExportModal';
 import Spinner from '../ui/Spinner';
 import { useToast } from '../ui/Toast';
 import './BomTree.css';
+
+// Compute hierarchical level numbers for every node in tree order.
+// Parent nodes appear before their children in the flat list, so a single
+// pass is enough — the counter per parent is always ready when needed.
+function computeLevelNumbers(nodes) {
+  const nums = new Map();
+  const counters = new Map();
+  // Root nodeKeys — children of roots restart numbering at 1 without chaining
+  // the root's own number as a prefix. So root children are "1", "2", "3";
+  // their children are "1.1", "1.2", etc.
+  const rootKeys = new Set(nodes.filter((n) => n.isRoot).map((n) => n.nodeKey));
+
+  for (const n of nodes) {
+    const pk = n.parentKey ?? '';
+    const idx = (counters.get(pk) ?? 0) + 1;
+    counters.set(pk, idx);
+    const parentIsRoot = n.parentKey ? rootKeys.has(n.parentKey) : true;
+    const parentNum = !parentIsRoot ? nums.get(n.parentKey) : null;
+    nums.set(n.nodeKey, parentNum ? `${parentNum}.${idx}` : String(idx));
+  }
+  return nums;
+}
 
 // Keep the search debounced so typing doesn't re-render on every keystroke.
 function useDebounced(value, delay = 200) {
@@ -79,7 +102,15 @@ export default function BomTree({
   // expanded; `locatedKey` is the descendant that should briefly highlight.
   const [locatingKey, setLocatingKey] = useState(null);
   const [locatedKey, setLocatedKey] = useState(null);
+
+  // Export modal — set to the BOM root node when open, null otherwise.
+  const [exportNode, setExportNode] = useState(null);
+
   const { showToast } = useToast();
+
+  // Level numbers: "1", "1.2", "1.2.3", … computed from the full loaded list
+  // (not visibleNodes) so numbers are stable regardless of expand state.
+  const levelNumbers = useMemo(() => computeLevelNumbers(tree.nodes), [tree.nodes]);
 
   // Re-runs on mount AND whenever `loadTop`'s identity changes — which
   // happens when topFilterId or topSearchQuery changes (see hook's useCallback
@@ -334,6 +365,8 @@ export default function BomTree({
                     onLocate={inWhereUsed ? handleLocate : undefined}
                     locating={locatingKey === node.nodeKey}
                     located={locatedKey === node.nodeKey}
+                    levelNum={levelNumbers.get(node.nodeKey) || ''}
+                    onExport={setExportNode}
                   />
                 ))}
               </tbody>
@@ -407,6 +440,13 @@ export default function BomTree({
             })()}
           </div>
         </>
+      )}
+      {exportNode && (
+        <ExportModal
+          rootNode={exportNode}
+          columns={columns || []}
+          onClose={() => setExportNode(null)}
+        />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BomIcon,
   AssemblyIcon,
@@ -30,7 +30,19 @@ export default function BomRow({
   onLocate,
   locating = false,
   located = false,
+  // Hierarchical level number string, e.g. "1.2.3".
+  levelNum = '',
+  // Called with the node when the user picks Export from the ⋯ menu.
+  onExport,
 }) {
+  // Local open/close state for the ⋯ action menu.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [menuOpen]);
   const isRoot = node.isRoot;
 
   // Children-state flags. `hasChildren` is set by the probe pass on every
@@ -130,6 +142,9 @@ export default function BomRow({
     );
   }
 
+  // ⋯ menu is only shown on BOM rows (root in BOMs view, or BOM-by-name in Parts).
+  const showMenu = isBom && !!onExport;
+
   return (
     <tr
       data-node-key={node.nodeKey}
@@ -140,12 +155,18 @@ export default function BomRow({
         (located ? ' bom-row--located' : '')
       }
     >
-      {/* Tree column ─ chevron + icon + indentation */}
+      {/* Tree column ─ level number + chevron + icon + indentation */}
       <td className="bom-col-tree">
         <div
           className="bom-cell-tree"
           style={{ paddingLeft: node.depth * INDENT_PX + 'px' }}
         >
+          {levelNum && !isRoot && (
+            <span className="bom-level-num" title={`Level ${levelNum}`}>
+              {levelNum}
+            </span>
+          )}
+
           <button
             type="button"
             className="bom-chevron"
@@ -200,6 +221,37 @@ export default function BomRow({
                 </span>
               )}
             </button>
+          )}
+
+          {showMenu && (
+            <div className="bom-row-menu-wrap">
+              <button
+                type="button"
+                className="bom-row-action-btn bom-row-menu-btn"
+                title="More actions"
+                aria-label="More actions"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen((v) => !v);
+                }}
+              >
+                ···
+              </button>
+              {menuOpen && (
+                <div className="bom-row-menu" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="bom-row-menu-item"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onExport(node);
+                    }}
+                  >
+                    Export
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </td>

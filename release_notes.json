@@ -1,5 +1,67 @@
 [
   {
+    "version": "1.0.0",
+    "date": "2026-05-01",
+    "changes": [
+      "Fix: Export now fetches the entire BOM tree from Orcanos regardless of what is expanded on screen. Previously only loaded/visible nodes were exported. Now each export format independently BFS-fetches all children (concurrency 6, page size 500) before generating the file."
+    ]
+  },
+  {
+    "version": "0.5.6",
+    "date": "2026-05-01",
+    "changes": [
+      "Fix: Where Used → Locate now highlights correctly when the BOM tree is already expanded. Previously, CHILD_LOAD_OK was a no-op for already-expanded nodes, causing freshly-generated nodeKeys to not match any DOM element. Now Locate reads already-expanded children directly from the live node list (real DOM keys) and only fetches+dispatches for nodes that aren't yet expanded."
+    ]
+  },
+  {
+    "version": "0.5.5",
+    "date": "2026-05-01",
+    "changes": [
+      "Fix: export level numbers now match the screen — root BOM row shows no number; direct children are 1, 2, 3; grandchildren are 1.1, 1.2, etc. Applied to JSON, CSV, and HTML/PDF exports."
+    ]
+  },
+  {
+    "version": "0.5.4",
+    "date": "2026-05-01",
+    "changes": [
+      "Performance: top-level BOMs now render immediately on load, then background-probe each root (concurrency 6) to determine if it has children. Chevrons and Assembly/Part icons update in-place as probes complete — no click required. Probe results land in the existing probeRowsCache so the first expand of any root is instant. Stale probe results (page changed mid-flight) are silently discarded."
+    ]
+  },
+  {
+    "version": "0.5.3",
+    "date": "2026-05-01",
+    "changes": [
+      "Level numbers: each BOM's direct children now restart at 1, 2, 3 (not 1.1, 1.2 chained off the root). Children of children are 1.1, 1.2, 2.1, etc. relative to their own parent."
+    ]
+  },
+  {
+    "version": "0.5.2",
+    "date": "2026-05-01",
+    "changes": [
+      "Level numbers: no longer shown on root (BOM) rows — only children display their hierarchical position (1.1, 1.1.1, etc.)."
+    ]
+  },
+  {
+    "version": "0.5.1",
+    "date": "2026-05-01",
+    "changes": [
+      "Export: removed the 'Include Orcanos URL column' option. The Key column is already a hyperlink in HTML/PDF exports; a separate URL column is redundant. JSON and CSV no longer include a URL field either."
+    ]
+  },
+  {
+    "version": "0.5.0",
+    "date": "2026-05-01",
+    "changes": [
+      "Level numbers: every tree row now shows its hierarchical position (1, 1.1, 1.1.1, …) as a dimmed prefix before the chevron. Computed in one O(n) pass over the flat loaded list; stable regardless of expand/collapse state.",
+      "⋯ action menu on BOM rows: small dropdown button in the Tree cell (extensible for future actions). Currently contains one item: Export.",
+      "Export modal: pick JSON, CSV, HTML (interactive), or PDF; optionally include an Orcanos URL column.",
+      "JSON export: recursive tree structure with number, type, fields{}, optional url, and children[].",
+      "CSV export: flat table — # (level number), Type, all visible columns, optional URL column.",
+      "HTML export: self-contained single file with inline CSS + vanilla JS expand/collapse. Level 1 expanded by default. Key column links to Orcanos.",
+      "PDF export: same HTML in print mode (all rows visible) opened in a new tab; browser's print dialog handles PDF conversion."
+    ]
+  },
+  {
     "version": "0.4.7",
     "date": "2026-05-01",
     "changes": [

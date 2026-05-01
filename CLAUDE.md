@@ -5,7 +5,7 @@ Orcanos QMS reference project). Read this once at the start of any working
 session before making changes.
 
 ### Current versions (update after every bump)
-- **App:** `0.4.7`
+- **App:** `1.0.0`
 
 ---
 
@@ -223,9 +223,10 @@ non-BOM row swaps the same `BomTree` to a where-used result set:
   Built by `whereUsedFilterBy(arg)` in `orcanosClient.js`. The `<arg>` differs
   by source row type:
     - **PRT click** → the part's own id (`row.itemId`).
-    - **PI  click** → the PI's raw CS21 value (`row.cs21Raw`, prefers
-      `Text`/`Value` over `Display_text` so we pass the stored value, not the
-      "PRT-… description" label).
+    - **PI  click** → `row.cs21Int` — the numeric ID extracted from the first
+      digits of `Master Part Source` (e.g. `PRT-39382-…` → `39382`). We do NOT
+      use `cs21Raw` here because when `Text`/`Value` are empty it falls back to
+      `Display_text`, which is the long "PRT-39382-600244 Label…" label.
 - `targetOriginalId: <id>` — the part's `originalId`, passed through to `BomRow`
   so it knows to render the **Locate** crosshair button on each root.
 - `whereUsedLabel` + `onExitWhereUsed` — drive the back banner at the top of
@@ -264,6 +265,33 @@ exits WU and remounts main on the new filter.
 BomTree's key includes `wu/<sqlArg>` so changing targets remounts cleanly.
 The Where-Used button is hidden inside Where-Used view (no nesting);
 Locate shows only on roots.
+
+---
+
+## Export
+
+BOM rows (root nodes in BOMs view, or `isBomByName` rows in Parts view) have a
+`⋯` button in the Tree cell. Clicking it opens a one-item dropdown (extensible);
+choosing **Export** opens `ExportModal`.
+
+`ExportModal` lets the user pick a format and whether to include an Orcanos URL
+column, then calls the matching function from `src/bom/exportUtils.js`:
+
+- **JSON** — recursive tree structure (`number`, `type`, `fields`, optional `url`,
+  `children`). Downloaded as `.json`.
+- **CSV** — flat table: `#` (level number), `Type`, all visible columns, optional
+  URL column. Downloaded as `.csv`.
+- **HTML** — self-contained single file with inline CSS + ~50 lines of vanilla JS.
+  Level 1 expanded by default; roots collapse/expand their children. Key column
+  links to Orcanos. Downloaded as `.html`.
+- **PDF** — generates the same HTML in print mode (all rows visible, no JS
+  toggle, auto-calls `window.print()`) and opens it in a new tab. User saves
+  as PDF from the browser's print dialog.
+
+Level numbers (`"1"`, `"1.2"`, `"1.2.3"`) are computed in `BomTree.jsx` by
+`computeLevelNumbers(nodes)` — a single O(n) pass over the flat loaded list.
+They appear as a dimmed prefix in the Tree cell and are included in all export
+formats.
 
 ---
 

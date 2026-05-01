@@ -234,12 +234,22 @@
 
 .bom-col-tree { width: 1%; white-space: nowrap; }
 
-/* ─── Tree cell internals (chevron + icon) ──────────────────── */
+/* ─── Tree cell internals (level number + chevron + icon) ───── */
 
 .bom-cell-tree {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Hierarchical position label — "1", "1.2", "1.2.3" */
+.bom-level-num {
+  font-size: 11px;
+  color: var(--text-tertiary, #aaa);
+  min-width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .bom-chevron {
@@ -352,6 +362,84 @@
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* ─── ⋯ action menu ────────────────────────────────────────── */
+
+.bom-row-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.bom-row-menu-btn {
+  letter-spacing: 1px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.bom-row-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--border-color, #e0d9f0);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  min-width: 120px;
+  padding: 4px 0;
+}
+
+.bom-row-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bom-row-menu-item:hover {
+  background: var(--accent-light, #eae5f5);
+  color: var(--accent-primary);
+}
+
+/* ─── Export modal extras ───────────────────────────────────── */
+
+.export-modal-bom-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  margin-bottom: 16px;
+  word-break: break-word;
+}
+
+.export-format-group {
+  border: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+
+.export-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.export-format-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 /* ─── Cell types ────────────────────────────────────────────── */

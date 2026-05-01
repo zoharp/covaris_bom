@@ -101,7 +101,10 @@ function reducer(state, action) {
     case 'TOP_LOAD_START':
       return { ...state, topLoading: true, topError: null };
 
-    case 'TOP_LOAD_OK':
+    case 'TOP_LOAD_OK': {
+      // Pre-generated keys let `loadTop` probe roots in the background and
+      // dispatch NODE_SET_HAS_CHILDREN by key without reading post-render state.
+      const { rows, topKeys } = action;
       return {
         ...state,
         topLoading: false,
@@ -109,11 +112,14 @@ function reducer(state, action) {
         topPage: action.page,
         topPageSize: action.pageSize,
         topTotal: action.total,
-        topHasMore: action.rows.length >= action.pageSize,
-        nodes: action.rows.map((row) =>
-          makeNode(row, { depth: 0, isRoot: true })
-        ),
+        topHasMore: rows.length >= action.pageSize,
+        nodes: rows.map((row, i) => {
+          const node = makeNode(row, { depth: 0, isRoot: true });
+          if (topKeys?.[i]) node.nodeKey = topKeys[i];
+          return node;
+        }),
       };
+    }
 
     case 'TOP_LOAD_FAIL':
       return {
@@ -235,6 +241,18 @@ function reducer(state, action) {
       };
     }
 
+    case 'NODE_SET_HAS_CHILDREN': {
+      // Background probe result — update a single root's hasChildren so its
+      // chevron and icon render correctly before the user clicks expand.
+      // If the node is no longer in state (page changed), this is a no-op.
+      const nodes = state.nodes.map((n) =>
+        n.nodeKey === action.nodeKey
+          ? { ...n, row: { ...n.row, hasChildren: action.hasChildren } }
+          : n
+      );
+      return { ...state, nodes };
+    }
+
     default:
       return state;
   }
@@ -312,12 +330,34 @@ export function useBomChildren({
           searchQuery: topSearchQuery,
           filterByOverride: topFilterByOverride,
         });
-        dispatch({
-          type: 'TOP_LOAD_OK',
-          rows,
-          total,
-          page: pageNum,
-          pageSize,
+        // Pre-generate nodeKeys so we can reference them in the background probe
+        // without waiting for a re-render to expose the new state.
+        const topKeys = rows.map(() => nextNodeKey());
+        dispatch({ type: 'TOP_LOAD_OK', rows, total, page: pageNum, pageSize, topKeys });
+
+        // Background: probe each root for children so the chevron and icon
+        // are correct before the user clicks anything. Fire-and-forget —
+        // stale results (page changed mid-flight) are harmless: the reducer's
+        // map finds no matching nodeKey and returns state unchanged.
+        mapWithLimit(rows, PROBE_CONCURRENCY, async (row, i) => {
+          if (!row.originalId) return;
+          let childRows;
+          if (probeRowsCache.current.has(row.originalId)) {
+            childRows = probeRowsCache.current.get(row.originalId);
+          } else {
+            try {
+              const res = await fetchChildren({ parentOriginalId: row.originalId });
+              childRows = res.rows;
+              probeRowsCache.current.set(row.originalId, childRows);
+            } catch {
+              return; // probe failure is non-critical
+            }
+          }
+          dispatch({
+            type: 'NODE_SET_HAS_CHILDREN',
+            nodeKey: topKeys[i],
+            hasChildren: childRows.length > 0,
+          });
         });
       } catch (err) {
         if (err.httpCode === 401) {
@@ -573,6 +613,10 @@ export function useBomChildren({
 
       while (frontier.length > 0 && !stopped) {
         // Fetch children for every assembly in the frontier, in parallel.
+        // If a node is already expanded in the tree we skip the fetch and
+        // read its children directly from nodesRef — their nodeKeys are the
+        // real ones already rendered in the DOM, so the highlight works even
+        // when the user had expanded the tree before clicking Locate.
         const newChildren = [];
 
         await mapWithLimit(
@@ -581,6 +625,20 @@ export function useBomChildren({
           async (item) => {
             if (stopped) return;
             if (item.depth >= EXPAND_ALL_DEPTH_CAP) return;
+
+            const live = nodesRef.current.find((n) => n.nodeKey === item.nodeKey);
+            if (live?.expanded && live?.loaded) {
+              // Already in the DOM — collect direct children from nodesRef.
+              const idx = nodesRef.current.findIndex((n) => n.nodeKey === item.nodeKey);
+              for (let i = idx + 1; i < nodesRef.current.length; i++) {
+                const n = nodesRef.current[i];
+                if (n.depth <= live.depth) break;
+                if (n.depth === live.depth + 1) {
+                  newChildren.push({ nodeKey: n.nodeKey, row: n.row, depth: n.depth });
+                }
+              }
+              return;
+            }
 
             let rows;
             try {
