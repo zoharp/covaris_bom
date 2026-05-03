@@ -45,7 +45,9 @@ export default function Login({ onSuccess }) {
     <div className="login-container">
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="login-brand">
-          <img src="/orcanos-icon.png" className="login-brand-icon" alt="Orcanos" />
+          <span className="login-brand-icon">
+            <img src="/orcanos-icon.png" alt="Orcanos" />
+          </span>
           <span className="login-brand-name">BOM Viewer</span>
         </div>
 

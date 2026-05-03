@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.1.8",
+    "date": "2026-05-03",
+    "changes": [
+      "🔄 **Login icon** — icon moved inline with BOM Viewer title, smaller size matching the sidebar style."
+    ]
+  },
+  {
     "version": "1.1.7",
     "date": "2026-05-03",
     "changes": [
