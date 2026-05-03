@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.1.7",
+    "date": "2026-05-03",
+    "changes": [
+      "🔄 **Branding** — app renamed to BOM Viewer; Orcanos icon replaces the letter mark in both the sidebar and login screen.",
+      "🔄 **Sidebar** — narrowed to 200px; icon rendered larger inside a white circle to match login screen style.",
+      "✨ **Version on login** — app version shown at the bottom of the login card.",
+      "✨ **Project auth check** — login now verifies the user is authorised for the configured Orcanos project; shows 'Not authorised for this project' if not."
+    ]
+  },
+  {
     "version": "1.1.6",
     "date": "2026-05-03",
     "changes": [

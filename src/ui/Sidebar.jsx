@@ -42,8 +42,10 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="brand">
-          <div className="brand-logo">B</div>
-          <span className="brand-name">Covaris BOM Viewer</span>
+          <span className="brand-logo">
+            <img src="/orcanos-icon.png" alt="Orcanos" />
+          </span>
+          <span className="brand-name">BOM Viewer</span>
         </div>
       </div>
 

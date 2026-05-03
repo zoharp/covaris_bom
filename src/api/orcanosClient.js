@@ -105,6 +105,23 @@ export async function login(username, password) {
       };
     }
 
+    // Check whether the user is authorised for the configured project (versionId).
+    // The login response carries the list of projects the user can access.
+    // We only block if the list is non-empty AND no entry matches — absence of
+    // the list (older API versions) is treated as "can't confirm, let through".
+    const projects = data.Data?.Projects ?? null;
+    console.log('[orcanos] login projects:', projects);
+    if (Array.isArray(projects) && projects.length > 0) {
+      const { versionId } = getSettings();
+      const allowed = projects.some((p) => {
+        const pid = p.Id ?? p.id ?? p.Version_id ?? p.Project_id ?? p.ProjectId;
+        return String(pid) === String(versionId);
+      });
+      if (!allowed) {
+        return { ok: false, error: 'Not authorised for this project.' };
+      }
+    }
+
     // Store ONLY the encoded header — never the plaintext password.
     localStorage.setItem(LS_AUTH, authHeader);
     localStorage.setItem(LS_USER, username);
@@ -112,7 +129,7 @@ export async function login(username, password) {
     return {
       ok: true,
       user: data.Data?.User_details ?? { User_name: username },
-      projects: data.Data?.Projects ?? null,
+      projects,
     };
   } catch (err) {
     return {

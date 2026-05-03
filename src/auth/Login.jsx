@@ -45,8 +45,8 @@ export default function Login({ onSuccess }) {
     <div className="login-container">
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="login-brand">
-          <div className="login-brand-mark">B</div>
-          <span className="login-brand-name">Covaris BOM Viewer</span>
+          <img src="/orcanos-icon.png" className="login-brand-icon" alt="Orcanos" />
+          <span className="login-brand-name">BOM Viewer</span>
         </div>
 
         <h1 className="login-title">Sign in</h1>
@@ -105,6 +105,7 @@ export default function Login({ onSuccess }) {
         <p className="login-footer">
           Authenticated against Orcanos at <code>us.orcanos.com/covaris/</code>.
         </p>
+        <p className="login-version">v{__APP_VERSION__}</p>
       </form>
     </div>
   );
