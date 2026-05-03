@@ -199,7 +199,7 @@ function buildSummary(nodes) {
       map.get(partKey).totalQty += qty;
       map.get(partKey).count += 1;
     } else {
-      map.set(partKey, { node: n, totalQty: qty, count: 1 });
+      map.set(partKey, { node: n, totalQty: qty, count: 1, unitCost: getCostValue(n) });
     }
   }
   return [...map.values()].sort((a, b) => {
@@ -213,6 +213,28 @@ function fmtQty(q) {
   return q % 1 === 0 ? String(q) : q.toFixed(4).replace(/\.?0+$/, '');
 }
 
+function fmtCost(n) {
+  return n.toFixed(2);
+}
+
+// Extract a numeric unit cost from a row. Tries common cost/price field
+// titles exactly, then falls back to a case-insensitive scan of all fields.
+function getCostValue(node) {
+  const raw =
+    node.row.byTitle('Cost') ||
+    node.row.byTitle('Unit Cost') ||
+    node.row.byTitle('Price') ||
+    node.row.byTitle('Unit Price') ||
+    node.row.byName('Cost') ||
+    node.row.byName('Unit_Cost') ||
+    (() => {
+      const f = node.row.fields.find((f) => /cost|price/i.test(f.Title || f.Name || ''));
+      return f ? (f.Display_text || f.Display || f.Text || f.Value || '') : '';
+    })();
+  const num = parseFloat(String(raw).replace(/[^\d.-]/g, ''));
+  return Number.isFinite(num) && num > 0 ? num : 0;
+}
+
 // ─── JSON export ───────────────────────────────────────────────────────────
 
 export async function exportJson(rootRow, columns, { bomName, summary = false, onProgress } = {}) {
@@ -221,15 +243,22 @@ export async function exportJson(rootRow, columns, { bomName, summary = false, o
   if (summary) {
     const entries = buildSummary(nodes);
     const nonQtyCols = columns.filter((c) => c.key !== '__quantity');
+    const hasCost = entries.some((e) => e.unitCost > 0);
+    const grandTotal = hasCost ? entries.reduce((s, e) => s + e.unitCost * e.totalQty, 0) : 0;
     const data = {
       bom: bomName,
       exportedAt: new Date().toISOString().split('T')[0],
       view: 'summary',
+      ...(hasCost && { totalCost: `$${fmtCost(grandTotal)}` }),
       items: entries.map((e) => {
         const fields = {};
         for (const col of nonQtyCols) fields[col.title] = stripHtml(getFieldValue(e.node, col));
         fields['Total Qty'] = e.totalQty;
         fields['Occurrences'] = e.count;
+        if (hasCost) {
+          fields['Unit Cost'] = `$${fmtCost(e.unitCost)}`;
+          fields['Total Cost'] = `$${fmtCost(e.unitCost * e.totalQty)}`;
+        }
         return { type: e.node.row.type, fields };
       }),
     };
@@ -272,8 +301,14 @@ export async function exportCsv(rootRow, columns, { bomName, summary = false, on
   if (summary) {
     const entries = buildSummary(nodes);
     const nonQtyCols = columns.filter((c) => c.key !== '__quantity');
-    const headers = ['Type', ...nonQtyCols.map((c) => c.title), 'Total Qty', 'Occurrences'];
+    const hasCost = entries.some((e) => e.unitCost > 0);
+    const grandTotal = hasCost ? entries.reduce((s, e) => s + e.unitCost * e.totalQty, 0) : 0;
+    const headers = [
+      'Type', ...nonQtyCols.map((c) => c.title), 'Total Qty', 'Occurrences',
+      ...(hasCost ? ['Unit Cost', 'Total Cost'] : []),
+    ];
     const lines = [
+      ...(hasCost ? [[`Total Cost: $${fmtCost(grandTotal)}`].map(csvEscape).join(',')] : []),
       headers.map(csvEscape).join(','),
       ...entries.map((e) => {
         const cells = [
@@ -281,6 +316,7 @@ export async function exportCsv(rootRow, columns, { bomName, summary = false, on
           ...nonQtyCols.map((c) => stripHtml(getFieldValue(e.node, c))),
           fmtQty(e.totalQty),
           String(e.count),
+          ...(hasCost ? [`$${fmtCost(e.unitCost)}`, `$${fmtCost(e.unitCost * e.totalQty)}`] : []),
         ];
         return cells.map(csvEscape).join(',');
       }),
@@ -341,10 +377,13 @@ export async function exportPdf(rootRow, columns, { bomName, summary = false, on
 function _generateSummaryHtml(entries, columns, { bomName, printMode }) {
   const date = new Date().toLocaleDateString();
   const nonQtyCols = columns.filter((c) => c.key !== '__quantity');
+  const hasCost = entries.some((e) => e.unitCost > 0);
+  const grandTotal = hasCost ? entries.reduce((s, e) => s + e.unitCost * e.totalQty, 0) : 0;
 
   const thCells =
     nonQtyCols.map((c) => `<th>${escHtml(c.title)}</th>`).join('') +
-    `<th>Total Qty</th><th>Occurrences</th>`;
+    `<th>Total Qty</th><th>Occurrences</th>` +
+    (hasCost ? `<th>Unit Cost</th><th>Total Cost</th>` : '');
 
   const bodyRows = entries
     .map((e) => {
@@ -361,7 +400,10 @@ function _generateSummaryHtml(entries, columns, { bomName, printMode }) {
           return `<td>${escHtml(val)}</td>`;
         })
         .join('');
-      return `<tr>${cells}<td>${escHtml(fmtQty(e.totalQty))}</td><td>${e.count}</td></tr>`;
+      const costCells = hasCost
+        ? `<td>$${escHtml(fmtCost(e.unitCost))}</td><td>$${escHtml(fmtCost(e.unitCost * e.totalQty))}</td>`
+        : '';
+      return `<tr>${cells}<td>${escHtml(fmtQty(e.totalQty))}</td><td>${e.count}</td>${costCells}</tr>`;
     })
     .join('\n');
 
@@ -379,7 +421,9 @@ function _generateSummaryHtml(entries, columns, { bomName, printMode }) {
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Inter,Arial,sans-serif;padding:16px;color:#1a1a2e;font-size:13px}
 h1{font-size:18px;color:#5C35A8;margin:0 0 2px}
-.meta{font-size:12px;color:#888;margin-bottom:16px}
+.meta{font-size:12px;color:#888;margin-bottom:6px}
+.total-cost{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:14px}
+.total-cost span{color:#5C35A8}
 table{border-collapse:collapse;width:100%;table-layout:auto}
 thead{position:sticky;top:0;z-index:1}
 th{background:#5C35A8;color:#fff;padding:7px 10px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap}
@@ -397,6 +441,7 @@ tr:hover td{background:#eae5f5}
 <body>
 <h1>${escHtml(bomName)}</h1>
 <p class="meta">Summary · Exported ${escHtml(date)} · ${entries.length} unique parts</p>
+${hasCost ? `<p class="total-cost">Total Cost: <span>$${escHtml(fmtCost(grandTotal))}</span></p>` : ''}
 <table>
 <thead><tr>${thCells}</tr></thead>
 <tbody>

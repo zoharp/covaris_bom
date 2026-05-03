@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.1.5",
+    "date": "2026-05-03",
+    "changes": [
+      "✨ **Summary export: cost totals** — Unit Cost and Total Cost columns added per row; Total Cost shown prominently at the top of the BOM. Appears only when cost data is present in the filter."
+    ]
+  },
+  {
     "version": "1.1.4",
     "date": "2026-05-03",
     "changes": [
