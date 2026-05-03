@@ -43,7 +43,7 @@ function useDebounced(value, delay = 200) {
 // Matched against both the normalized column key (Name) and title (Title).
 // The synthetic __revision column is always included; __quantity is additional.
 const DEFAULT_VISIBLE_COLS = new Set([
-  'key', 'name', 'status', 'routing state', 'revision',
+  'key', 'name', 'status', 'part status', 'routing state', 'revision', 'quantity',
 ]);
 
 // Columns we never display. The data is still kept on each row — we just

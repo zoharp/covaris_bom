@@ -1,7 +1,7 @@
 {
   "name": "covaris-bom-viewer",
   "private": true,
-  "version": "1.1.5",
+  "version": "1.1.6",
   "type": "module",
   "description": "Read-only React SPA for browsing Orcanos BOM trees at us.orcanos.com/covaris/",
   "scripts": {

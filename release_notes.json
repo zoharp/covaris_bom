@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.1.6",
+    "date": "2026-05-03",
+    "changes": [
+      "🐛 **Default columns** — Quantity and Part Status (PI) now visible by default; Status correctly shows for both PRTs and PIs."
+    ]
+  },
+  {
     "version": "1.1.5",
     "date": "2026-05-03",
     "changes": [

@@ -5,7 +5,7 @@ Orcanos QMS reference project). Read this once at the start of any working
 session before making changes.
 
 ### Current versions (update after every bump)
-- **App:** `1.1.5`
+- **App:** `1.1.6`
 
 ---
 
