@@ -39,6 +39,13 @@ function useDebounced(value, delay = 200) {
   return v;
 }
 
+// Columns visible by default (when "Show additional fields" is OFF).
+// Matched against both the normalized column key (Name) and title (Title).
+// The synthetic __revision column is always included; __quantity is additional.
+const DEFAULT_VISIBLE_COLS = new Set([
+  'key', 'name', 'status', 'routing state', 'revision',
+]);
+
 // Columns we never display. The data is still kept on each row — we just
 // don't add them to the rendered column list. Match by either Name or Title,
 // case-insensitive, with spaces and underscores treated equivalently.
@@ -170,6 +177,34 @@ export default function BomTree({
       { key: '__revision', title: 'Revision' },
     ];
   }, [tree.nodes]);
+
+  // ─── Additional-fields toggle ─────────────────────────────────
+  // Persisted per user in localStorage. Default OFF — only the core columns
+  // listed in DEFAULT_VISIBLE_COLS are shown; ON shows everything.
+  const additionalKey = `covaris_show_additional_${localStorage.getItem('covaris_user') || ''}`;
+  const [showAdditional, setShowAdditional] = useState(
+    () => localStorage.getItem(additionalKey) === 'true'
+  );
+  function toggleAdditional() {
+    setShowAdditional((prev) => {
+      const next = !prev;
+      localStorage.setItem(additionalKey, String(next));
+      return next;
+    });
+  }
+
+  // `displayColumns` is the filtered view used for rendering.
+  // `columns` (full set) is kept for the export modal so exports always
+  // include every field.
+  const displayColumns = useMemo(() => {
+    if (!columns) return null;
+    if (showAdditional) return columns;
+    return columns.filter((c) => {
+      const n = normalizeColKey(c.key);
+      const t = normalizeColKey(c.title);
+      return DEFAULT_VISIBLE_COLS.has(n) || DEFAULT_VISIBLE_COLS.has(t);
+    });
+  }, [columns, showAdditional]);
 
   // ─── Search filter ────────────────────────────────────────────
   // A node is visible if:
@@ -357,6 +392,14 @@ export default function BomTree({
           {tree.topLoading ? <Spinner size={14} /> : '⟳'}
           <span>Refresh</span>
         </button>
+        <label className="bom-additional-toggle">
+          <input
+            type="checkbox"
+            checked={showAdditional}
+            onChange={toggleAdditional}
+          />
+          Additional fields
+        </label>
       </div>
 
       {tree.topLoading && tree.nodes.length === 0 && (
@@ -386,14 +429,14 @@ export default function BomTree({
         </div>
       )}
 
-      {tree.nodes.length > 0 && columns && (
+      {tree.nodes.length > 0 && displayColumns && (
         <>
           <div className="bom-grid-wrap">
             <table className="bom-grid">
               <thead>
                 <tr>
                   <th className="bom-col-tree">Tree</th>
-                  {columns.map((c) => (
+                  {displayColumns.map((c) => (
                     <th key={c.key}>{c.title}</th>
                   ))}
                 </tr>
@@ -404,7 +447,7 @@ export default function BomTree({
                     key={node.nodeKey}
                     node={node}
                     view={view}
-                    columns={columns}
+                    columns={displayColumns}
                     onToggle={() => tree.toggle(node)}
                     onExpandAll={() => handleExpandAll(node)}
                     expandAllProgress={progress[node.nodeKey]}
