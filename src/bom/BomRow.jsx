@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BomIcon,
   AssemblyIcon,
@@ -39,6 +40,57 @@ export default function BomRow({
 }) {
   // Local open/close state for the ⋯ action menu.
   const [menuOpen, setMenuOpen] = useState(false);
+  // Rich cell tooltip: null when hidden, { x, y, html, hasImg } when visible.
+  const [tip, setTip] = useState(null);
+  const hideTimer = useRef(null);
+
+  function cancelHide() {
+    if (hideTimer.current) { clearTimeout(hideTimer.current); hideTimer.current = null; }
+  }
+  function scheduleHide() {
+    cancelHide();
+    // Image tooltips have pointer-events:auto so the user can mouse into them —
+    // give a grace period. Text tooltips are pointer-events:none; hide immediately.
+    if (tip?.hasImg) {
+      hideTimer.current = setTimeout(() => setTip(null), 400);
+    } else {
+      setTip(null);
+    }
+  }
+
+  // Clean up timer on unmount.
+  useEffect(() => () => cancelHide(), []);
+
+  function handleCellEnter(e, value) {
+    cancelHide();
+    const raw = String(value);
+    const hasImg = /<img\b/i.test(raw);
+
+    if (!hasImg) {
+      // Only show a tooltip when the content is actually clipped in the cell.
+      const clip = e.currentTarget.querySelector('.bom-cell-clip');
+      const truncated = clip && (
+        clip.scrollWidth > clip.offsetWidth ||
+        clip.scrollHeight > clip.offsetHeight
+      );
+      if (!truncated) { setTip(null); return; }
+    }
+
+    const maxW = hasImg ? 500 : 480;
+    const maxH = hasImg ? 500 : 340;
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    // Place directly below the cell (4px gap) so the user can move straight down onto it.
+    let x = rect.left;
+    let y = rect.bottom + 4;
+    if (y + maxH > window.innerHeight) y = rect.top - maxH - 4;  // flip above
+    if (x + maxW > window.innerWidth)  x = window.innerWidth - maxW - 8; // shift left
+    x = Math.max(4, x);
+    y = Math.max(4, y);
+
+    setTip({ x, y, html: sanitizeHtml(raw), hasImg });
+  }
+
   useEffect(() => {
     if (!menuOpen) return;
     const close = () => setMenuOpen(false);
@@ -156,6 +208,7 @@ export default function BomRow({
         (isRoot ? ' bom-row--root' : '') +
         (located ? ' bom-row--located' : '')
       }
+      onMouseLeave={scheduleHide}
     >
       {/* Tree column ─ level number + chevron + icon + indentation */}
       <td className="bom-col-tree">
@@ -266,6 +319,22 @@ export default function BomRow({
         </div>
       </td>
 
+      {/* Rich hover tooltip — rendered via portal so it escapes table overflow */}
+      {tip && createPortal(
+        <div
+          className={'cell-tooltip' + (tip.hasImg ? ' cell-tooltip--image' : '')}
+          style={{ left: tip.x, top: tip.y }}
+          onMouseEnter={cancelHide}
+          onMouseLeave={() => setTip(null)}
+        >
+          {tip.hasImg && (
+            <button className="cell-tooltip-close" onClick={() => setTip(null)} title="Close">✕</button>
+          )}
+          <div dangerouslySetInnerHTML={{ __html: tip.html }} />
+        </div>,
+        document.body
+      )}
+
       {/* Dynamic + synthetic columns */}
       {columns.map((c) => {
         const value = valueFor(c.key);
@@ -287,13 +356,15 @@ export default function BomRow({
         }
 
         return (
-          <td key={c.key} className="bom-col-text" title={tooltip}>
-            {/* Field text may contain HTML — sanitize then render. */}
-            <span
-              dangerouslySetInnerHTML={{
-                __html: sanitizeHtml(value),
-              }}
-            />
+          <td
+            key={c.key}
+            className="bom-col-text"
+            onMouseEnter={(e) => handleCellEnter(e, value)}
+            onMouseLeave={scheduleHide}
+          >
+            <div className="bom-cell-clip">
+              <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }} />
+            </div>
           </td>
         );
       })}

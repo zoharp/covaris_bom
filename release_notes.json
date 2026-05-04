@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.2.0",
+    "date": "2026-05-04",
+    "changes": [
+      "✨ **Rich cell tooltips** — hovering a truncated text cell shows a framed tooltip with the full content; hovering an image cell shows the full-size image pinned until you move away.",
+      "✨ **Image field support** — HTML fields containing `<img>` tags now render inline thumbnails (20px) with a full-size hover preview.",
+      "🔄 **Fixed row height** — all rows are a uniform height regardless of HTML content in fields.",
+      "🐛 **View persistence** — active sidebar view (BOMs / Part Catalog) is now remembered across browser reloads.",
+      "🐛 **Image URL fix** — triple-slash paths in Orcanos image URLs (e.g. `///covarisFTP/...`) are normalised to a single slash before rendering.",
+      "🐛 **Tooltip only on truncated content** — tooltip no longer appears for fields whose text fits fully in the cell."
+    ]
+  },
+  {
     "version": "1.1.8",
     "date": "2026-05-03",
     "changes": [

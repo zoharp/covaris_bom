@@ -28,7 +28,9 @@ function AppShell() {
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   // Active main-view: 'boms' (BOM Filter) or 'parts' (Part Catalog filter).
   // Both views share BomTree — only the top filter ID and label differ.
-  const [view, setView] = useState('boms');
+  const [view, setView] = useState(
+    () => localStorage.getItem('covaris_view') || 'boms'
+  );
   // Where-Used target: { id, label } when active, null otherwise. When set,
   // BomTree renders the BOMs that contain that part, and offers a Locate
   // button on each root. Cleared by the back banner.
@@ -42,6 +44,7 @@ function AppShell() {
   const handleSelectView = useCallback((nextView) => {
     setWhereUsedTarget(null);
     setView(nextView);
+    localStorage.setItem('covaris_view', nextView);
   }, []);
 
   const handleWhereUsed = useCallback((node) => {

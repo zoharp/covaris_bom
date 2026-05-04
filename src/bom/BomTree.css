@@ -291,6 +291,7 @@
 .bom-grid tbody tr {
   border-bottom: 1px solid var(--border-color);
   transition: background 0.1s;
+  height: 36px;
 }
 
 .bom-grid tbody tr:nth-child(even) {
@@ -544,8 +545,88 @@
 .bom-col-text {
   max-width: 360px;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* Clips rich HTML content (including block elements like <p>, <br>) to one row height */
+.bom-cell-clip {
+  height: 20px;
+  overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Keep images as small thumbnails inside cells so rows stay a fixed height */
+.bom-col-text img,
+.bom-col-key img {
+  max-height: 20px;
+  width: auto;
+  vertical-align: middle;
+  border-radius: 2px;
+  cursor: zoom-in;
+}
+
+/* ─── Rich cell tooltip ──────────────────────────────────── */
+
+.cell-tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid var(--border-color, #e0d9f0);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
+  padding: 10px 14px;
+  max-width: min(480px, 90vw);
+  max-height: 340px;
+  overflow: hidden;
+  pointer-events: none;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--text-primary);
+  line-height: 1.55;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.cell-tooltip--image {
+  padding: 8px;
+  background: #f5f5f8;
+  pointer-events: auto;
+  cursor: default;
+  max-width: 500px;
+  max-height: 500px;
+}
+
+.cell-tooltip img {
+  max-width: 484px;
+  max-height: 484px;
+  width: auto;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+}
+
+.cell-tooltip-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  pointer-events: auto;
+}
+
+.cell-tooltip-close:hover {
+  background: rgba(0,0,0,0.7);
 }
 
 /* The Key column is the canonical link to the Orcanos record. */
