@@ -126,10 +126,13 @@ export async function login(username, password) {
     localStorage.setItem(LS_AUTH, authHeader);
     localStorage.setItem(LS_USER, username);
 
+    const idleMinutes = parseInt(data.Data?.Idle_time ?? '', 10) || null;
+
     return {
       ok: true,
       user: data.Data?.User_details ?? { User_name: username },
       projects,
+      idleMinutes,
     };
   } catch (err) {
     return {

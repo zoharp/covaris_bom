@@ -35,7 +35,7 @@ export default function Login({ onSuccess }) {
     setSubmitting(false);
 
     if (res.ok) {
-      onSuccess(username.trim());
+      onSuccess(username.trim(), res.idleMinutes);
     } else {
       showToast(res.error, 'error');
     }

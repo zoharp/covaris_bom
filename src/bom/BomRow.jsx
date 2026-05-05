@@ -11,6 +11,7 @@ import {
 } from './icons';
 import Spinner from '../ui/Spinner';
 import { sanitizeHtml } from '../utils/sanitizeHtml';
+import { isCostColumn, formatCostValue } from '../utils/fmtCost';
 import { orcanosItemUrl } from '../api/orcanosClient';
 import { getSettings } from '../settings/settingsStore';
 
@@ -337,7 +338,8 @@ export default function BomRow({
 
       {/* Dynamic + synthetic columns */}
       {columns.map((c) => {
-        const value = valueFor(c.key);
+        const raw = valueFor(c.key);
+        const value = isCostColumn(c) ? formatCostValue(raw) : raw;
         const tooltip = String(value).replace(/<[^>]+>/g, '').trim();
 
         if (isKeyColumn(c) && linkHref) {

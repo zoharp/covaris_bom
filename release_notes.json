@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.3.0",
+    "date": "2026-05-05",
+    "changes": [
+      "✨ **Idle timeout** — automatically signs out the user after the server-configured idle period (from QW_Login Idle_time) with an inactivity toast.",
+      "🔄 **Cost formatting** — cost and price columns now display as 9,999,999.00 (comma-separated thousands) both on screen and in all export formats.",
+      "🐛 **Additional fields order** — toggling \"Show additional fields\" no longer reorders core columns; extra fields always appear after Revision."
+    ]
+  },
+  {
     "version": "1.2.0",
     "date": "2026-05-04",
     "changes": [

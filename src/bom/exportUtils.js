@@ -1,5 +1,6 @@
 import { fetchChildren, orcanosItemUrl } from '../api/orcanosClient';
 import { getSettings } from '../settings/settingsStore';
+import { fmtCost } from '../utils/fmtCost';
 
 const EXPORT_CONCURRENCY = 6;
 const EXPORT_PAGE_SIZE = 500; // large page to minimize pagination in deep BOMs
@@ -213,9 +214,6 @@ function fmtQty(q) {
   return q % 1 === 0 ? String(q) : q.toFixed(4).replace(/\.?0+$/, '');
 }
 
-function fmtCost(n) {
-  return n.toFixed(2);
-}
 
 // Extract a numeric unit cost from a row. Tries common cost/price field
 // titles exactly, then falls back to a case-insensitive scan of all fields.

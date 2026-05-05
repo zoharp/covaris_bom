@@ -171,10 +171,23 @@ export default function BomTree({
         key: f.Name,
         title: f.Title || f.Name,
       }));
+    const defaultCols = dynamic.filter((c) => {
+      const n = normalizeColKey(c.key);
+      const t = normalizeColKey(c.title);
+      return DEFAULT_VISIBLE_COLS.has(n) || DEFAULT_VISIBLE_COLS.has(t);
+    });
+    const additionalCols = dynamic.filter((c) => {
+      const n = normalizeColKey(c.key);
+      const t = normalizeColKey(c.title);
+      return !DEFAULT_VISIBLE_COLS.has(n) && !DEFAULT_VISIBLE_COLS.has(t);
+    });
+    // Additional fields always go after Revision so toggling them doesn't
+    // reorder the core columns.
     return [
-      ...dynamic,
+      ...defaultCols,
       { key: '__quantity', title: 'Quantity' },
       { key: '__revision', title: 'Revision' },
+      ...additionalCols,
     ];
   }, [tree.nodes]);
 

@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import Login from './auth/Login';
+import { useIdleTimeout } from './auth/useIdleTimeout';
 import Sidebar from './ui/Sidebar';
 import BomTree from './bom/BomTree';
 import SettingsModal from './settings/SettingsModal';
@@ -37,6 +38,7 @@ function AppShell() {
   const [whereUsedTarget, setWhereUsedTarget] = useState(null);
   // Bumped after a successful login or sign-out so children can reset.
   const [authEpoch, setAuthEpoch] = useState(0);
+  const [idleMinutes, setIdleMinutes] = useState(null);
   const { showToast } = useToast();
 
   // Switching the sidebar view also exits Where-Used (we'd otherwise show
@@ -77,9 +79,10 @@ function AppShell() {
   const handleExitWhereUsed = useCallback(() => setWhereUsedTarget(null), []);
 
   // ─── Login / sign-out handlers ──────────────────────────────────────────
-  const handleLoginSuccess = useCallback((user) => {
+  const handleLoginSuccess = useCallback((user, idleMin) => {
     setUsername(user);
     setAuth(true);
+    setIdleMinutes(idleMin || null);
     setAuthEpoch((e) => e + 1);
   }, []);
 
@@ -87,6 +90,7 @@ function AppShell() {
     apiSignOut();
     setAuth(false);
     setUsername('');
+    setIdleMinutes(null);
     setAuthEpoch((e) => e + 1);
   }, []);
 
@@ -101,6 +105,11 @@ function AppShell() {
     },
     [showToast]
   );
+
+  useIdleTimeout({
+    idleMinutes: auth ? idleMinutes : null,
+    onIdle: () => handleAuthExpired('You were signed out due to inactivity.'),
+  });
 
   if (!auth) {
     return <Login onSuccess={handleLoginSuccess} />;
